@@ -1,1 +1,657 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Corrida na Cidade</title>
+  <style>
+    :root {
+      --sky-top: #0b1026;
+      --sky-mid: #1b2250;
+      --sky-bot: #3a2a5c;
+      --road: #2a2d33;
+      --lane: #f4e27a;
+      --neon: #5eead4;
+      --gold: #fbbf24;
+    }
 
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      min-height: 100vh;
+      font-family: "Trebuchet MS", "Segoe UI", sans-serif;
+      color: #f8fafc;
+      background: radial-gradient(ellipse at top, #1e1b4b 0%, #020617 70%);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 16px;
+    }
+
+    h1 {
+      font-size: clamp(1.4rem, 3vw, 2.2rem);
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      background: linear-gradient(90deg, #67e8f9, #c4b5fd, #fde68a);
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+      margin-bottom: 4px;
+    }
+
+    .subtitle {
+      color: #94a3b8;
+      margin-bottom: 14px;
+      font-size: 0.95rem;
+    }
+
+    .hud {
+      width: min(980px, 100%);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 12px;
+      flex-wrap: wrap;
+    }
+
+    .coins {
+      background: linear-gradient(180deg, #1e293b, #0f172a);
+      border: 1px solid #334155;
+      border-radius: 12px;
+      padding: 10px 16px;
+      font-size: 1.15rem;
+      box-shadow: 0 0 20px rgba(251, 191, 36, 0.15);
+    }
+
+    .coins span { color: var(--gold); font-weight: 700; }
+
+    .panel {
+      width: min(980px, 100%);
+      background: rgba(15, 23, 42, 0.75);
+      border: 1px solid #334155;
+      border-radius: 16px;
+      padding: 14px;
+      margin-bottom: 12px;
+      backdrop-filter: blur(8px);
+    }
+
+    .row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .label {
+      width: 100%;
+      text-align: center;
+      color: #cbd5e1;
+      font-size: 0.9rem;
+      margin-bottom: 6px;
+    }
+
+    .car-btn {
+      border: 2px solid #475569;
+      background: #0f172a;
+      color: #fff;
+      border-radius: 12px;
+      padding: 8px 12px 10px;
+      cursor: pointer;
+      min-width: 120px;
+      transition: transform .15s, box-shadow .15s, border-color .15s;
+    }
+
+    .car-btn:hover { transform: translateY(-2px); }
+
+    .car-btn.selected {
+      border-color: #fff;
+      box-shadow: 0 0 16px currentColor;
+    }
+
+    .car-btn .swatch {
+      height: 18px;
+      border-radius: 6px;
+      margin-bottom: 6px;
+    }
+
+    .bet-btn {
+      border: 1px solid #64748b;
+      background: #1e293b;
+      color: #e2e8f0;
+      border-radius: 999px;
+      padding: 8px 14px;
+      cursor: pointer;
+      font-weight: 700;
+    }
+
+    .bet-btn.selected {
+      background: #fbbf24;
+      color: #111827;
+      border-color: #f59e0b;
+    }
+
+    .go {
+      margin-top: 10px;
+      width: 100%;
+      max-width: 280px;
+      display: block;
+      margin-left: auto;
+      margin-right: auto;
+      padding: 12px 18px;
+      font-size: 1.05rem;
+      font-weight: 800;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      border: none;
+      border-radius: 12px;
+      cursor: pointer;
+      color: #042f2e;
+      background: linear-gradient(90deg, #5eead4, #67e8f9);
+      box-shadow: 0 8px 24px rgba(94, 234, 212, 0.25);
+    }
+
+    .go:disabled {
+      opacity: 0.45;
+      cursor: not-allowed;
+      box-shadow: none;
+    }
+
+    .scene-wrap {
+      width: min(980px, 100%);
+      position: relative;
+      border-radius: 16px;
+      overflow: hidden;
+      border: 2px solid #1e293b;
+      box-shadow: 0 20px 50px rgba(0,0,0,.45), 0 0 40px rgba(99,102,241,.15);
+    }
+
+    .scene {
+      position: relative;
+      height: 420px;
+      background: linear-gradient(to bottom, var(--sky-top) 0%, var(--sky-mid) 38%, var(--sky-bot) 58%, #1a1030 58%);
+      overflow: hidden;
+    }
+
+    .stars, .stars::after {
+      position: absolute;
+      inset: 0 0 45% 0;
+      background-image:
+        radial-gradient(1px 1px at 10% 20%, #fff 50%, transparent 51%),
+        radial-gradient(1px 1px at 30% 40%, #fff 50%, transparent 51%),
+        radial-gradient(1.5px 1.5px at 55% 15%, #fff 50%, transparent 51%),
+        radial-gradient(1px 1px at 70% 35%, #fff 50%, transparent 51%),
+        radial-gradient(1px 1px at 85% 22%, #fff 50%, transparent 51%),
+        radial-gradient(1.5px 1.5px at 92% 48%, #fff 50%, transparent 51%),
+        radial-gradient(1px 1px at 18% 55%, #c7d2fe 50%, transparent 51%);
+      opacity: 0.7;
+      pointer-events: none;
+    }
+
+    .moon {
+      position: absolute;
+      top: 28px;
+      right: 70px;
+      width: 54px;
+      height: 54px;
+      border-radius: 50%;
+      background: radial-gradient(circle at 35% 35%, #fff7d6, #fde68a 60%, #f59e0b);
+      box-shadow: 0 0 30px rgba(253, 230, 138, 0.55);
+    }
+
+    #buildings {
+      position: absolute;
+      left: 0; right: 0;
+      bottom: 148px;
+      height: 210px;
+      pointer-events: none;
+    }
+
+    .building {
+      position: absolute;
+      bottom: 0;
+      background: linear-gradient(180deg, #0b1220, #111827);
+      box-shadow: inset 0 0 0 1px rgba(255,255,255,0.04);
+    }
+
+    .building::after {
+      content: "";
+      position: absolute;
+      inset: 8px 6px;
+      background-image:
+        repeating-linear-gradient(
+          to bottom,
+          transparent 0 9px,
+          rgba(0,0,0,0.25) 9px 11px
+        ),
+        repeating-linear-gradient(
+          to right,
+          transparent 0 8px,
+          rgba(0,0,0,0.2) 8px 10px
+        );
+      background-color: transparent;
+      opacity: 1;
+      box-shadow:
+        12px 14px 0 0 rgba(253, 224, 71, 0.35),
+        28px 14px 0 0 rgba(125, 211, 252, 0.28),
+        12px 32px 0 0 rgba(253, 224, 71, 0.18),
+        28px 32px 0 0 rgba(167, 139, 250, 0.28),
+        12px 50px 0 0 rgba(125, 211, 252, 0.2),
+        28px 50px 0 0 rgba(253, 224, 71, 0.22),
+        44px 14px 0 0 rgba(253, 224, 71, 0.15),
+        44px 32px 0 0 rgba(125, 211, 252, 0.22),
+        44px 50px 0 0 rgba(253, 224, 71, 0.12);
+    }
+
+    .neon-sign {
+      position: absolute;
+      font-size: 11px;
+      letter-spacing: 1px;
+      color: #67e8f9;
+      text-shadow: 0 0 8px #22d3ee;
+      top: 8px;
+      left: 50%;
+      transform: translateX(-50%);
+      white-space: nowrap;
+    }
+
+    .road {
+      position: absolute;
+      left: 0; right: 0; bottom: 0;
+      height: 148px;
+      background:
+        linear-gradient(to bottom, #3f3f46 0 8px, transparent 8px),
+        repeating-linear-gradient(90deg, #3f3f46 0 18px, #52525b 18px 36px),
+        linear-gradient(#27272a, #18181b);
+    }
+
+    .sidewalk {
+      position: absolute;
+      left: 0; right: 0; bottom: 148px;
+      height: 16px;
+      background: repeating-linear-gradient(90deg, #64748b 0 28px, #94a3b8 28px 30px, #475569 30px 58px);
+    }
+
+    .lane {
+      position: absolute;
+      left: 0; right: 0;
+      height: 4px;
+      background: repeating-linear-gradient(90deg, #fde047 0 28px, transparent 28px 54px);
+      opacity: 0.85;
+    }
+
+    .lane.l1 { bottom: 102px; }
+    .lane.l2 { bottom: 62px; }
+
+    .finish {
+      position: absolute;
+      right: 36px;
+      bottom: 8px;
+      width: 14px;
+      height: 132px;
+      background:
+        repeating-linear-gradient(
+          to bottom,
+          #fff 0 10px,
+          #111 10px 20px
+        );
+      box-shadow: 0 0 12px rgba(255,255,255,0.35);
+      z-index: 5;
+    }
+
+    .finish-flag {
+      position: absolute;
+      right: 22px;
+      bottom: 140px;
+      color: #fff;
+      font-size: 12px;
+      letter-spacing: 1px;
+      z-index: 6;
+    }
+
+    .lamp {
+      position: absolute;
+      bottom: 148px;
+      width: 6px;
+      height: 70px;
+      background: #1f2937;
+      z-index: 3;
+    }
+
+    .lamp::before {
+      content: "";
+      position: absolute;
+      top: -8px;
+      left: -10px;
+      width: 26px;
+      height: 12px;
+      background: #fde68a;
+      border-radius: 6px;
+      box-shadow: 0 8px 24px 8px rgba(253, 230, 138, 0.28);
+    }
+
+    .racer {
+      position: absolute;
+      width: 92px;
+      height: 38px;
+      z-index: 8;
+      transition: filter .2s;
+    }
+
+    .racer .body {
+      position: absolute;
+      left: 8px; right: 8px; top: 8px; bottom: 10px;
+      border-radius: 10px 18px 8px 8px;
+      box-shadow: 0 6px 0 rgba(0,0,0,0.35);
+    }
+
+    .racer .cabin {
+      position: absolute;
+      left: 28px;
+      top: 2px;
+      width: 28px;
+      height: 14px;
+      background: linear-gradient(180deg, #e0f2fe, #38bdf8);
+      border-radius: 6px 10px 2px 2px;
+      opacity: 0.9;
+    }
+
+    .racer .wheel {
+      position: absolute;
+      bottom: 0;
+      width: 16px;
+      height: 16px;
+      background: #0f172a;
+      border: 3px solid #cbd5e1;
+      border-radius: 50%;
+    }
+
+    .racer .wheel.w1 { left: 12px; }
+    .racer .wheel.w2 { right: 12px; }
+
+    .racer .light {
+      position: absolute;
+      right: 6px;
+      top: 16px;
+      width: 8px;
+      height: 6px;
+      background: #fef9c3;
+      border-radius: 2px;
+      box-shadow: 6px 0 10px 2px rgba(254, 249, 195, 0.7);
+    }
+
+    .racer.selected-glow {
+      filter: drop-shadow(0 0 8px #fff);
+    }
+
+    .msg {
+      margin-top: 12px;
+      min-height: 28px;
+      font-size: 1.05rem;
+      text-align: center;
+      color: #e2e8f0;
+    }
+
+    .msg.win { color: #86efac; }
+    .msg.lose { color: #fda4af; }
+
+    .hint {
+      margin-top: 8px;
+      color: #64748b;
+      font-size: 0.8rem;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+  <h1>Corrida na Cidade</h1>
+  <p class="subtitle">Escolha um carro, aposte moedas virtuais e veja quem chega primeiro na rua</p>
+
+  <div class="hud">
+    <div class="coins">Moedas: <span id="coins">1000</span></div>
+    <div class="coins">Último prêmio: <span id="last">0</span></div>
+  </div>
+
+  <div class="panel">
+    <div class="label">1. Escolha o carro</div>
+    <div class="row" id="carChoices"></div>
+    <div class="label" style="margin-top:12px">2. Valor da aposta</div>
+    <div class="row" id="betChoices"></div>
+    <button class="go" id="startBtn">Apostar e correr</button>
+  </div>
+
+  <div class="scene-wrap">
+    <div class="scene" id="scene">
+      <div class="stars"></div>
+      <div class="moon"></div>
+      <div id="buildings"></div>
+      <div class="sidewalk"></div>
+      <div class="road">
+        <div class="lane l1"></div>
+        <div class="lane l2"></div>
+      </div>
+      <div class="finish"></div>
+      <div class="finish-flag">CHEGADA</div>
+      <div id="carsLayer"></div>
+    </div>
+  </div>
+
+  <p class="msg" id="msg">Escolha um carro e um valor para começar.</p>
+  <p class="hint">Jogo só com moedas de brincadeira. Nada de dinheiro real.</p>
+
+  <script>
+    const CARS = [
+      { id: "vermelho", name: "Vermelho", color: "#ef4444", shade: "#7f1d1d", y: 28 },
+      { id: "azul", name: "Azul", color: "#3b82f6", shade: "#1e3a8a", y: 58 },
+      { id: "verde", name: "Verde", color: "#22c55e", shade: "#14532d", y: 88 },
+      { id: "amarelo", name: "Amarelo", color: "#eab308", shade: "#713f12", y: 118 }
+    ];
+
+    const BETS = [50, 100, 200, 400];
+    const START_X = 18;
+    const FINISH_X = () => document.getElementById("scene").clientWidth - 130;
+
+    let coins = 1000;
+    let selectedCar = "vermelho";
+    let selectedBet = 100;
+    let racing = false;
+    let positions = {};
+    let speeds = {};
+    let raf = null;
+
+    const coinsEl = document.getElementById("coins");
+    const lastEl = document.getElementById("last");
+    const msgEl = document.getElementById("msg");
+    const startBtn = document.getElementById("startBtn");
+    const carsLayer = document.getElementById("carsLayer");
+    const buildingsEl = document.getElementById("buildings");
+    const carChoices = document.getElementById("carChoices");
+    const betChoices = document.getElementById("betChoices");
+
+    function buildCity() {
+      buildingsEl.innerHTML = "";
+      const labels = ["PIZZA", "HOTEL", "CINE", "CAFE", "LOJA", "RADIO"];
+      let x = -10;
+      let i = 0;
+      while (x < 1000) {
+        const w = 48 + Math.floor(Math.random() * 46);
+        const h = 70 + Math.floor(Math.random() * 130);
+        const b = document.createElement("div");
+        b.className = "building";
+        b.style.left = x + "px";
+        b.style.width = w + "px";
+        b.style.height = h + "px";
+        if (i % 3 === 0) {
+          const sign = document.createElement("div");
+          sign.className = "neon-sign";
+          sign.textContent = labels[i % labels.length];
+          b.appendChild(sign);
+        }
+        buildingsEl.appendChild(b);
+        x += w + 6;
+        i++;
+      }
+
+      const scene = document.getElementById("scene");
+      [80, 240, 430, 620, 800].forEach((lx) => {
+        const lamp = document.createElement("div");
+        lamp.className = "lamp";
+        lamp.style.left = lx + "px";
+        scene.appendChild(lamp);
+      });
+    }
+
+    function renderChoices() {
+      carChoices.innerHTML = "";
+      CARS.forEach((c) => {
+        const btn = document.createElement("button");
+        btn.className = "car-btn" + (selectedCar === c.id ? " selected" : "");
+        btn.style.color = c.color;
+        btn.innerHTML = `<div class="swatch" style="background:${c.color}"></div>${c.name}`;
+        btn.onclick = () => {
+          if (racing) return;
+          selectedCar = c.id;
+          renderChoices();
+          highlightCars();
+        };
+        carChoices.appendChild(btn);
+      });
+
+      betChoices.innerHTML = "";
+      BETS.forEach((b) => {
+        const btn = document.createElement("button");
+        btn.className = "bet-btn" + (selectedBet === b ? " selected" : "");
+        btn.textContent = b + " moedas";
+        btn.onclick = () => {
+          if (racing) return;
+          selectedBet = b;
+          renderChoices();
+        };
+        betChoices.appendChild(btn);
+      });
+    }
+
+    function makeCars() {
+      carsLayer.innerHTML = "";
+      CARS.forEach((c) => {
+        const el = document.createElement("div");
+        el.className = "racer";
+        el.id = "car-" + c.id;
+        el.style.bottom = c.y + "px";
+        el.style.left = START_X + "px";
+        el.innerHTML = `
+          <div class="body" style="background: linear-gradient(180deg, ${c.color}, ${c.shade})"></div>
+          <div class="cabin"></div>
+          <div class="wheel w1"></div>
+          <div class="wheel w2"></div>
+          <div class="light"></div>
+        `;
+        carsLayer.appendChild(el);
+        positions[c.id] = START_X;
+      });
+      highlightCars();
+    }
+
+    function highlightCars() {
+      CARS.forEach((c) => {
+        const el = document.getElementById("car-" + c.id);
+        if (!el) return;
+        el.classList.toggle("selected-glow", c.id === selectedCar);
+      });
+    }
+
+    function resetCars() {
+      CARS.forEach((c) => {
+        positions[c.id] = START_X;
+        const el = document.getElementById("car-" + c.id);
+        if (el) el.style.left = START_X + "px";
+      });
+    }
+
+    function updateHud() {
+      coinsEl.textContent = coins;
+    }
+
+    function setMsg(text, type) {
+      msgEl.textContent = text;
+      msgEl.className = "msg" + (type ? " " + type : "");
+    }
+
+    function startRace() {
+      if (racing) return;
+      if (selectedBet > coins) {
+        setMsg("Você não tem moedas suficientes para essa aposta.", "lose");
+        return;
+      }
+
+      coins -= selectedBet;
+      updateHud();
+      racing = true;
+      startBtn.disabled = true;
+      resetCars();
+
+      CARS.forEach((c) => {
+        // velocidade base + um extra aleatório (a corrida não é combinada)
+        speeds[c.id] = 2.2 + Math.random() * 3.4;
+      });
+
+      setMsg("Valendo! Os carros saíram da largada...");
+      lastEl.textContent = "—";
+      loop();
+    }
+
+    function loop() {
+      const finish = FINISH_X();
+      let winner = null;
+
+      CARS.forEach((c) => {
+        positions[c.id] += speeds[c.id];
+        // pequenas variações durante a prova
+        if (Math.random() < 0.08) {
+          speeds[c.id] += (Math.random() - 0.45) * 0.35;
+          speeds[c.id] = Math.max(1.6, Math.min(6.2, speeds[c.id]));
+        }
+        const el = document.getElementById("car-" + c.id);
+        el.style.left = positions[c.id] + "px";
+        if (positions[c.id] >= finish && !winner) winner = c.id;
+      });
+
+      if (winner) {
+        endRace(winner);
+        return;
+      }
+      raf = requestAnimationFrame(loop);
+    }
+
+    function endRace(winnerId) {
+      racing = false;
+      startBtn.disabled = false;
+      const winner = CARS.find((c) => c.id === winnerId);
+      const won = winnerId === selectedCar;
+      if (won) {
+        const prize = selectedBet * 3;
+        coins += prize;
+        lastEl.textContent = "+" + prize;
+        setMsg("Chegada! O " + winner.name + " venceu. Você ganhou " + prize + " moedas!", "win");
+      } else {
+        lastEl.textContent = "0";
+        setMsg("Chegada! O " + winner.name + " venceu. Sua aposta não foi dessa vez.", "lose");
+      }
+      updateHud();
+      if (coins <= 0) {
+        coins = 200;
+        updateHud();
+        setMsg((msgEl.textContent || "") + " Você ganhou 200 moedas extras para continuar.", "win");
+      }
+    }
+
+    startBtn.addEventListener("click", startRace);
+
+    buildCity();
+    makeCars();
+    renderChoices();
+    updateHud();
+  </script>
+</body>
+</html>
