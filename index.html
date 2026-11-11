@@ -5,12 +5,12 @@
 <title>Zombie City - Sobrevivência</title>
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
-  body {
-    background: #111;
+  html, body {
+    background: #0a0a0a;
     display: flex;
     justify-content: center;
     align-items: center;
-    height: 100vh;
+    min-height: 100vh;
     font-family: 'Arial', sans-serif;
     overflow: hidden;
     user-select: none;
@@ -31,7 +31,7 @@
     top: 10px;
     left: 10px;
     color: #fff;
-    font-size: 18px;
+    font-size: 16px;
     font-weight: bold;
     text-shadow: 2px 2px 4px #000;
     pointer-events: none;
@@ -40,7 +40,7 @@
   #hud div { margin-bottom: 6px; }
   .barra {
     width: 200px;
-    height: 18px;
+    height: 16px;
     background: rgba(0,0,0,0.6);
     border: 2px solid #333;
     border-radius: 4px;
@@ -51,13 +51,17 @@
     height: 100%;
     width: 100%;
     background: linear-gradient(90deg, #e33, #f66);
-    transition: width 0.15s;
+    transition: width 0.1s linear;
+  }
+  #armaInfo {
+    color: #ffd44d;
+    font-size: 15px;
   }
   
   #overlay {
     position: absolute;
     inset: 0;
-    background: rgba(0,0,0,0.85);
+    background: rgba(0,0,0,0.88);
     display: flex;
     flex-direction: column;
     justify-content: center;
@@ -65,17 +69,18 @@
     color: #fff;
     z-index: 20;
     text-align: center;
+    padding: 20px;
   }
   #overlay h1 {
-    font-size: 48px;
+    font-size: 46px;
     color: #e33;
     text-shadow: 0 0 20px #f00;
-    margin-bottom: 20px;
+    margin-bottom: 15px;
     letter-spacing: 4px;
   }
   #overlay p {
-    font-size: 18px;
-    margin: 8px 0;
+    font-size: 16px;
+    margin: 6px 0;
     color: #ccc;
   }
   #overlay button {
@@ -103,9 +108,24 @@
     bottom: 10px;
     right: 10px;
     color: #aaa;
-    font-size: 13px;
+    font-size: 12px;
     text-shadow: 1px 1px 2px #000;
     z-index: 10;
+    pointer-events: none;
+  }
+  #avisoNivel {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    color: #ffd44d;
+    font-size: 32px;
+    font-weight: bold;
+    text-shadow: 0 0 20px #f80, 2px 2px 4px #000;
+    z-index: 15;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.3s;
   }
 </style>
 </head>
@@ -117,50 +137,60 @@
   <div id="hud">
     <div>❤ Vida: <span id="vidaTxt">100</span></div>
     <div class="barra"><div id="barraVida"></div></div>
-    <div>💀 Zumbis mortos: <span id="mortosTxt">0</span></div>
+    <div>💀 Mortos: <span id="mortosTxt">0</span></div>
     <div>🌊 Onda: <span id="ondaTxt">1</span></div>
-    <div>🔫 Munição: <span id="municaoTxt">∞</span></div>
+    <div id="armaInfo">🔫 <span id="armaTxt">Pistola (Nv.1)</span></div>
   </div>
   
+  <div id="avisoNivel"></div>
   <div id="miraAviso">Clique para atirar</div>
   
   <div id="overlay">
     <h1>ZOMBIE CITY</h1>
     <p>Sobreviva às hordas de zumbis</p>
-    <p>🖱️ Mire com o mouse | 🖱️ Clique para atirar</p>
+    <p>🖱️ Mire com o mouse | Clique para atirar</p>
     <p>⌨️ WASD ou setas para mover</p>
+    <p style="color:#ffd44d; margin-top:15px;">🔫 Arma evolui a cada 20 zumbis mortos</p>
+    <p style="color:#ff6666;">🧟 Zumbis ficam mais fortes a cada 30 mortos</p>
     <button id="btnIniciar">INICIAR JOGO</button>
   </div>
 </div>
 
 <script>
 (() => {
+  'use strict';
+  
   const canvas = document.getElementById('game');
-  const ctx = canvas.getContext('2d');
+  const ctx = canvas.getContext('2d', { alpha: false });
   const W = canvas.width;
   const H = canvas.height;
   
-  // ===== Elementos HUD =====
+  // ===== HUD =====
   const elVida = document.getElementById('vidaTxt');
   const elBarra = document.getElementById('barraVida');
   const elMortos = document.getElementById('mortosTxt');
   const elOnda = document.getElementById('ondaTxt');
-  const elMunicao = document.getElementById('municaoTxt');
+  const elArma = document.getElementById('armaTxt');
   const overlay = document.getElementById('overlay');
   const btnIniciar = document.getElementById('btnIniciar');
+  const elAvisoNivel = document.getElementById('avisoNivel');
   
-  // ===== Estado do jogo =====
+  // ===== Estado =====
   let rodando = false;
   let gameOver = false;
+  let ultimoTempo = 0;
+  let acumuladorFixo = 0;
+  const DT_FIXO = 1000 / 60; // 60 lógicos por segundo
   
   const player = {
     x: W/2, y: H/2,
     raio: 16,
-    vel: 3.2,
+    vel: 3.4,
     vida: 100,
     vidaMax: 100,
     angulo: 0,
-    invulneravel: 0
+    invulneravel: 0,
+    passoAnim: 0
   };
   
   let zumbis = [];
@@ -172,12 +202,30 @@
   let zumbisSpawnados = 0;
   let tempoSpawn = 0;
   let tempoJogo = 0;
-  let dificuldade = 1;
   
-  const teclas = {};
-  const mouse = { x: W/2, y: H/2, down: false };
+  // ===== Sistema de armas (evolui a cada 20 mortos) =====
+  const ARMAS = [
+    { nome: 'Pistola',       dano: 34, cadencia: 130, velTiro: 14, raio: 3, cor: '#ffd44d', multi: 1, spread: 0 },
+    { nome: 'Pistola Dupla', dano: 38, cadencia: 115, velTiro: 15, raio: 3, cor: '#ffcc33', multi: 1, spread: 0.05 },
+    { nome: 'SMG',           dano: 30, cadencia: 80,  velTiro: 16, raio: 3, cor: '#ffb347', multi: 1, spread: 0.08 },
+    { nome: 'Rifle',         dano: 55, cadencia: 90,  velTiro: 18, raio: 4, cor: '#ff9a33', multi: 1, spread: 0.03 },
+    { nome: 'Escopeta',      dano: 40, cadencia: 180, velTiro: 15, raio: 3, cor: '#ff8844', multi: 3, spread: 0.18 },
+    { nome: 'Rifle de Assalto', dano: 65, cadencia: 70, velTiro: 19, raio: 4, cor: '#ff7044', multi: 1, spread: 0.05 },
+    { nome: 'Metralhadora',  dano: 50, cadencia: 55, velTiro: 20, raio: 3.5, cor: '#ff5533', multi: 1, spread: 0.1 },
+    { nome: 'Lança-Chamas',  dano: 30, cadencia: 40, velTiro: 13, raio: 5, cor: '#ff3322', multi: 1, spread: 0.25 },
+    { nome: 'Canhão de Plasma', dano: 90, cadencia: 110, velTiro: 22, raio: 5, cor: '#aa55ff', multi: 2, spread: 0.08 },
+    { nome: 'Arma Suprema',  dano: 120, cadencia: 60, velTiro: 24, raio: 6, cor: '#ff00ff', multi: 2, spread: 0.12 }
+  ];
+  let nivelArma = 0;
   
-  // ===== Cenário da cidade (prédios gerados uma vez) =====
+  function armaAtual() { return ARMAS[Math.min(nivelArma, ARMAS.length - 1)]; }
+  
+  // ===== Multiplicador dos zumbis (a cada 30 mortos) =====
+  function multiplicadorZumbi() {
+    return 1 + Math.floor(mortos / 30) * 0.35; // +35% a cada 30
+  }
+  
+  // ===== Cenário =====
   const predios = [];
   const carros = [];
   const postes = [];
@@ -187,17 +235,13 @@
     carros.length = 0;
     postes.length = 0;
     
-    // Prédios ao redor (não no centro onde o player começa)
-    const tentativas = 40;
-    for (let i = 0; i < tentativas; i++) {
+    for (let i = 0; i < 45; i++) {
       const w = 60 + Math.random() * 90;
       const h = 60 + Math.random() * 120;
       const x = Math.random() * (W - w);
       const y = Math.random() * (H - h);
-      // evita centro de spawn
       const cx = x + w/2, cy = y + h/2;
       if (Math.hypot(cx - W/2, cy - H/2) < 140) continue;
-      // evita sobreposição muito grande
       let sobrepoe = false;
       for (const p of predios) {
         if (x < p.x + p.w + 15 && x + w + 15 > p.x &&
@@ -206,28 +250,32 @@
         }
       }
       if (sobrepoe) continue;
+      
+      const janelas = Math.floor(Math.random() * 3) + 1;
+      const janelasCols = Math.floor(Math.random() * 3) + 1;
+      const janelasLuz = [];
+      for (let k = 0; k < janelas * janelasCols; k++) {
+        janelasLuz.push(Math.random() < 0.35);
+      }
+      
       predios.push({
         x, y, w, h,
         cor: `hsl(${200 + Math.random()*40}, 10%, ${15 + Math.random()*15}%)`,
-        janelas: Math.floor(Math.random() * 3) + 1,
-        janelasCols: Math.floor(Math.random() * 3) + 1
+        janelas, janelasCols, janelasLuz
       });
     }
     
-    // Carros abandonados
     for (let i = 0; i < 6; i++) {
       const x = 80 + Math.random() * (W - 160);
       const y = 80 + Math.random() * (H - 160);
       if (Math.hypot(x - W/2, y - H/2) < 120) continue;
       carros.push({
-        x, y,
-        w: 50, h: 24,
+        x, y, w: 50, h: 24,
         rot: Math.random() * Math.PI,
         cor: ['#5a1a1a','#2a3a4a','#4a4a2a','#3a2a4a'][Math.floor(Math.random()*4)]
       });
     }
     
-    // Postes de luz
     for (let i = 0; i < 10; i++) {
       postes.push({
         x: 40 + Math.random() * (W - 80),
@@ -236,7 +284,7 @@
     }
   }
   
-  // ===== Spawn de zumbis =====
+  // ===== Spawn =====
   function iniciarOnda() {
     zumbisParaOnda = 4 + onda * 2;
     zumbisSpawnados = 0;
@@ -246,26 +294,26 @@
   function spawnZumbi() {
     const lado = Math.floor(Math.random() * 4);
     let x, y;
-    const margem = 40;
-    if (lado === 0) { x = Math.random() * W; y = -margem; }
-    else if (lado === 1) { x = W + margem; y = Math.random() * H; }
-    else if (lado === 2) { x = Math.random() * W; y = H + margem; }
-    else { x = -margem; y = Math.random() * H; }
+    const m = 40;
+    if (lado === 0) { x = Math.random() * W; y = -m; }
+    else if (lado === 1) { x = W + m; y = Math.random() * H; }
+    else if (lado === 2) { x = Math.random() * W; y = H + m; }
+    else { x = -m; y = Math.random() * H; }
     
-    const tipo = Math.random() < 0.15 && onda >= 3 ? 'rapido' : 'normal';
-    const vidaBase = tipo === 'rapido' ? 30 : 50;
-    const velBase = tipo === 'rapido' ? 1.9 : 1.2;
+    const mult = multiplicadorZumbi();
+    const rapido = Math.random() < (0.12 + onda * 0.02);
+    const vidaBase = rapido ? 30 : 50;
+    const velBase = rapido ? 1.9 : 1.2;
     
     zumbis.push({
       x, y,
-      raio: tipo === 'rapido' ? 12 : 15,
-      vel: (velBase + onda * 0.12) * (0.9 + Math.random()*0.2),
-      vida: vidaBase + onda * 8,
-      vidaMax: vidaBase + onda * 8,
-      dano: tipo === 'rapido' ? 8 : 12,
-      tipo,
+      raio: rapido ? 12 : 15,
+      vel: (velBase + onda * 0.1) * (0.9 + Math.random() * 0.2) * Math.min(2.2, mult * 0.85),
+      vida: (vidaBase + onda * 6) * mult,
+      vidaMax: (vidaBase + onda * 6) * mult,
+      dano: (rapido ? 8 : 12) * mult,
+      tipo: rapido ? 'rapido' : 'normal',
       angulo: 0,
-      cooldownAtaque: 0,
       wobble: Math.random() * Math.PI * 2
     });
     zumbisSpawnados++;
@@ -273,52 +321,71 @@
   
   // ===== Tiro =====
   function atirar() {
-    const angulo = Math.atan2(mouse.y - player.y, mouse.x - player.x);
-    const velTiro = 14;
-    tiros.push({
-      x: player.x + Math.cos(angulo) * (player.raio + 4),
-      y: player.y + Math.sin(angulo) * (player.raio + 4),
-      vx: Math.cos(angulo) * velTiro,
-      vy: Math.sin(angulo) * velTiro,
-      vida: 60,
-      raio: 3
-    });
+    const arma = armaAtual();
+    const anguloBase = Math.atan2(mouse.y - player.y, mouse.x - player.x);
     
-    // recuo visual
+    for (let k = 0; k < arma.multi; k++) {
+      const ang = anguloBase + (Math.random() - 0.5) * arma.spread * 2;
+      tiros.push({
+        x: player.x + Math.cos(ang) * (player.raio + 6),
+        y: player.y + Math.sin(ang) * (player.raio + 6),
+        vx: Math.cos(ang) * arma.velTiro,
+        vy: Math.sin(ang) * arma.velTiro,
+        vida: 55,
+        raio: arma.raio,
+        dano: arma.dano,
+        cor: arma.cor
+      });
+    }
+    
     for (let i = 0; i < 4; i++) {
       particulas.push({
-        x: player.x + Math.cos(angulo) * player.raio,
-        y: player.y + Math.sin(angulo) * player.raio,
-        vx: Math.cos(angulo + (Math.random()-0.5)*0.8) * (3 + Math.random()*4),
-        vy: Math.sin(angulo + (Math.random()-0.5)*0.8) * (3 + Math.random()*4),
+        x: player.x + Math.cos(anguloBase) * player.raio,
+        y: player.y + Math.sin(anguloBase) * player.raio,
+        vx: Math.cos(anguloBase + (Math.random()-0.5)*0.8) * (3 + Math.random()*4),
+        vy: Math.sin(anguloBase + (Math.random()-0.5)*0.8) * (3 + Math.random()*4),
         vida: 12 + Math.random()*8,
-        cor: '#ffcc33',
+        vidaMax: 20,
+        cor: arma.cor,
         tamanho: 2 + Math.random()*2
       });
     }
   }
   
-  // ===== Partículas de sangue =====
-  function criarSangue(x, y, cor = '#a00') {
-    for (let i = 0; i < 12; i++) {
+  function criarSangue(x, y, cor = '#a00', qtd = 10) {
+    for (let i = 0; i < qtd; i++) {
       const a = Math.random() * Math.PI * 2;
       const v = 1 + Math.random() * 5;
       particulas.push({
         x, y,
         vx: Math.cos(a) * v,
         vy: Math.sin(a) * v,
-        vida: 20 + Math.random()*20,
-        cor: cor,
-        tamanho: 2 + Math.random()*3
+        vida: 18 + Math.random()*15,
+        vidaMax: 33,
+        cor,
+        tamanho: 2 + Math.random()*2.5
       });
     }
   }
   
-  // ===== Atualização =====
+  // ===== Aviso visual =====
+  let avisoTimer = 0;
+  function mostrarAviso(texto) {
+    elAvisoNivel.textContent = texto;
+    elAvisoNivel.style.opacity = '1';
+    avisoTimer = 90;
+  }
+  
+  // ===== Atualização lógica =====
   function atualizar(dt) {
     tempoJogo += dt;
     
-    // Movimento do player
+    if (avisoTimer > 0) {
+      avisoTimer -= dt;
+      if (avisoTimer <= 0) elAvisoNivel.style.opacity = '0';
+    }
+    
+    // Movimento
     let dx = 0, dy = 0;
     if (teclas['w'] || teclas['arrowup']) dy -= 1;
     if (teclas['s'] || teclas['arrowdown']) dy += 1;
@@ -327,22 +394,20 @@
     
     if (dx || dy) {
       const len = Math.hypot(dx, dy);
-      dx /= len; dy /= len;
-      player.x += dx * player.vel;
-      player.y += dy * player.vel;
+      player.x += (dx / len) * player.vel * dt;
+      player.y += (dy / len) * player.vel * dt;
+      player.passoAnim += dt * 0.25;
+    } else {
+      player.passoAnim *= 0.95;
     }
     
-    // Limites do mapa
     player.x = Math.max(player.raio, Math.min(W - player.raio, player.x));
     player.y = Math.max(player.raio, Math.min(H - player.raio, player.y));
-    
-    // Ângulo para o mouse
     player.angulo = Math.atan2(mouse.y - player.y, mouse.x - player.x);
     
-    // Invulnerabilidade
     if (player.invulneravel > 0) player.invulneravel -= dt;
     
-    // Spawn de zumbis
+    // Spawn
     if (zumbisSpawnados < zumbisParaOnda) {
       tempoSpawn += dt;
       if (tempoSpawn > 35) {
@@ -350,34 +415,28 @@
         spawnZumbi();
       }
     } else if (zumbis.length === 0) {
-      // Próxima onda
       onda++;
-      dificuldade += 0.2;
       iniciarOnda();
-      // cura pequena
       player.vida = Math.min(player.vidaMax, player.vida + 15);
     }
     
-    // Atualiza zumbis
-    for (let i = zumbis.length - 1; i >= 0; i--) {
+    // Zumbis
+    const totalZumbis = zumbis.length;
+    for (let i = totalZumbis - 1; i >= 0; i--) {
       const z = zumbis[i];
       const ang = Math.atan2(player.y - z.y, player.x - z.x);
       z.angulo = ang;
-      z.wobble += 0.15;
+      z.wobble += 0.15 * dt;
       
-      // Movimento com leve zigue-zague
-      const wobbleX = Math.cos(z.wobble) * 0.3;
-      const wobbleY = Math.sin(z.wobble) * 0.3;
-      z.x += Math.cos(ang) * z.vel + wobbleX;
-      z.y += Math.sin(ang) * z.vel + wobbleY;
+      z.x += (Math.cos(ang) * z.vel + Math.cos(z.wobble) * 0.3) * dt;
+      z.y += (Math.sin(ang) * z.vel + Math.sin(z.wobble) * 0.3) * dt;
       
-      // Colisão com player
-      const dist = Math.hypot(player.x - z.x, player.y - z.y);
-      if (dist < player.raio + z.raio) {
+      const ddx = player.x - z.x, ddy = player.y - z.y;
+      if (ddx*ddx + ddy*ddy < (player.raio + z.raio) * (player.raio + z.raio)) {
         if (player.invulneravel <= 0) {
           player.vida -= z.dano;
           player.invulneravel = 30;
-          criarSangue(player.x, player.y, '#f33');
+          criarSangue(player.x, player.y, '#f33', 8);
           if (player.vida <= 0) {
             player.vida = 0;
             finalizarJogo();
@@ -387,33 +446,42 @@
       }
     }
     
-    // Atualiza tiros
+    // Tiros
     for (let i = tiros.length - 1; i >= 0; i--) {
       const t = tiros[i];
-      t.x += t.vx;
-      t.y += t.vy;
-      t.vida--;
+      t.x += t.vx * dt;
+      t.y += t.vy * dt;
+      t.vida -= dt;
       
-      // fora da tela
       if (t.x < -20 || t.x > W + 20 || t.y < -20 || t.y > H + 20 || t.vida <= 0) {
         tiros.splice(i, 1);
         continue;
       }
       
-      // colisão com zumbis
       let acertou = false;
       for (let j = zumbis.length - 1; j >= 0; j--) {
         const z = zumbis[j];
-        const d = Math.hypot(t.x - z.x, t.y - z.y);
-        if (d < z.raio + t.raio) {
-          z.vida -= 34;
-          criarSangue(z.x, z.y);
+        const ddx = t.x - z.x, ddy = t.y - z.y;
+        const rr = z.raio + t.raio;
+        if (ddx*ddx + ddy*ddy < rr*rr) {
+          z.vida -= t.dano;
+          criarSangue(z.x, z.y, '#a00', 5);
           acertou = true;
           
           if (z.vida <= 0) {
-            criarSangue(z.x, z.y, '#800');
+            criarSangue(z.x, z.y, '#800', 12);
             zumbis.splice(j, 1);
             mortos++;
+            
+            // Evolução da arma a cada 20 mortos
+            if (mortos % 20 === 0 && nivelArma < ARMAS.length - 1) {
+              nivelArma++;
+              mostrarAviso('🔫 ' + armaAtual().nome + ' desbloqueada!');
+            }
+            // Aviso de zumbis mais fortes a cada 30
+            if (mortos % 30 === 0) {
+              setTimeout(() => mostrarAviso('🧟 Zumbis mais fortes!'), 800);
+            }
           }
           break;
         }
@@ -421,31 +489,23 @@
       if (acertou) tiros.splice(i, 1);
     }
     
-    // Atualiza partículas
+    // Partículas
     for (let i = particulas.length - 1; i >= 0; i--) {
       const p = particulas[i];
-      p.x += p.vx;
-      p.y += p.vy;
+      p.x += p.vx * dt;
+      p.y += p.vy * dt;
       p.vx *= 0.94;
       p.vy *= 0.94;
-      p.vida--;
+      p.vida -= dt;
       if (p.vida <= 0) particulas.splice(i, 1);
     }
-    
-    // Atualiza HUD
-    elVida.textContent = Math.ceil(player.vida);
-    elBarra.style.width = (player.vida / player.vidaMax * 100) + '%';
-    elMortos.textContent = mortos;
-    elOnda.textContent = onda;
   }
   
   // ===== Render =====
   function desenharCidade() {
-    // chão (asfalto)
     ctx.fillStyle = '#222';
     ctx.fillRect(0, 0, W, H);
     
-    // linhas de rua
     ctx.strokeStyle = '#444';
     ctx.lineWidth = 3;
     ctx.setLineDash([20, 20]);
@@ -455,16 +515,14 @@
     ctx.stroke();
     ctx.setLineDash([]);
     
-    // calçadas
     ctx.fillStyle = '#2a2a2a';
     ctx.fillRect(0, 0, W, 8);
     ctx.fillRect(0, H - 8, W, 8);
     ctx.fillRect(0, 0, 8, H);
     ctx.fillRect(W - 8, 0, 8, H);
     
-    // postes de luz
+    // Postes com luz (cache de gradiente)
     for (const p of postes) {
-      // luz
       const grad = ctx.createRadialGradient(p.x, p.y, 5, p.x, p.y, 70);
       grad.addColorStop(0, 'rgba(255,240,150,0.15)');
       grad.addColorStop(1, 'rgba(255,240,150,0)');
@@ -479,55 +537,47 @@
       ctx.fill();
     }
     
-    // prédios
+    // Prédios
     for (const p of predios) {
-      // sombra
       ctx.fillStyle = 'rgba(0,0,0,0.5)';
       ctx.fillRect(p.x + 5, p.y + 5, p.w, p.h);
       
-      // corpo
       ctx.fillStyle = p.cor;
       ctx.fillRect(p.x, p.y, p.w, p.h);
       
-      // borda
       ctx.strokeStyle = '#000';
       ctx.lineWidth = 2;
       ctx.strokeRect(p.x, p.y, p.w, p.h);
       
-      // janelas
       const janW = 12, janH = 14;
       const padX = (p.w - p.janelas * janW) / (p.janelas + 1);
       const padY = (p.h - p.janelasCols * janH) / (p.janelasCols + 1);
+      let idx = 0;
       for (let r = 0; r < p.janelasCols; r++) {
         for (let c = 0; c < p.janelas; c++) {
           const jx = p.x + padX + c * (janW + padX);
           const jy = p.y + padY + r * (janH + padY);
-          const aceso = Math.random() < 0.3;
-          ctx.fillStyle = aceso ? 'rgba(255,200,80,0.7)' : 'rgba(20,30,40,0.9)';
+          ctx.fillStyle = p.janelasLuz[idx] ? 'rgba(255,200,80,0.7)' : 'rgba(20,30,40,0.9)';
           ctx.fillRect(jx, jy, janW, janH);
+          idx++;
         }
       }
     }
     
-    // carros
+    // Carros
     for (const c of carros) {
       ctx.save();
       ctx.translate(c.x, c.y);
       ctx.rotate(c.rot);
-      // sombra
       ctx.fillStyle = 'rgba(0,0,0,0.4)';
       ctx.fillRect(-c.w/2 + 3, -c.h/2 + 3, c.w, c.h);
-      // corpo
       ctx.fillStyle = c.cor;
       ctx.fillRect(-c.w/2, -c.h/2, c.w, c.h);
-      // teto
       ctx.fillStyle = 'rgba(0,0,0,0.4)';
       ctx.fillRect(-c.w/4, -c.h/2 + 3, c.w/2, c.h - 6);
-      // vidros
       ctx.fillStyle = '#223';
       ctx.fillRect(-c.w/4, -c.h/2 + 2, c.w/6, c.h - 4);
       ctx.fillRect(c.w/8, -c.h/2 + 2, c.w/6, c.h - 4);
-      // borda
       ctx.strokeStyle = '#000';
       ctx.lineWidth = 1.5;
       ctx.strokeRect(-c.w/2, -c.h/2, c.w, c.h);
@@ -535,43 +585,127 @@
     }
   }
   
+  // ===== Personagem humano detalhado =====
   function desenharPlayer() {
-    ctx.save();
-    ctx.translate(player.x, player.y);
+    const px = player.x, py = player.y;
+    const r = player.raio;
+    const anda = Math.sin(player.passoAnim * 6) * 2;
     
-    // sombra
-    ctx.fillStyle = 'rgba(0,0,0,0.5)';
+    ctx.save();
+    ctx.translate(px, py);
+    
+    // Sombra no chão
+    ctx.fillStyle = 'rgba(0,0,0,0.45)';
     ctx.beginPath();
-    ctx.ellipse(3, 5, player.raio, player.raio * 0.8, 0, 0, Math.PI * 2);
+    ctx.ellipse(3, r * 0.7, r * 0.95, r * 0.5, 0, 0, Math.PI * 2);
     ctx.fill();
     
-    // piscar quando invulnerável
+    // Piscar quando invulnerável
     if (player.invulneravel > 0 && Math.floor(player.invulneravel / 4) % 2 === 0) {
-      ctx.globalAlpha = 0.5;
+      ctx.globalAlpha = 0.55;
     }
     
-    // corpo
-    ctx.fillStyle = '#3a7';
+    // Pernas
+    ctx.fillStyle = '#1a2a4a';
+    ctx.fillRect(-6, 2, 5, r - 2 + anda);
+    ctx.fillRect(1, 2, 5, r - 2 - anda);
+    
+    // Sapatos
+    ctx.fillStyle = '#111';
+    ctx.fillRect(-6, r + anda - 2, 5, 4);
+    ctx.fillRect(1, r - anda - 2, 5, 4);
+    
+    // Corpo (camisa verde)
+    ctx.fillStyle = '#3a7d44';
     ctx.beginPath();
-    ctx.arc(0, 0, player.raio, 0, Math.PI * 2);
+    ctx.roundRect(-8, -r * 0.7, 16, r * 1.2, 4);
     ctx.fill();
-    ctx.strokeStyle = '#000';
-    ctx.lineWidth = 2;
+    ctx.strokeStyle = '#1a2a1a';
+    ctx.lineWidth = 1.5;
     ctx.stroke();
     
-    // cabeça
-    ctx.fillStyle = '#fa5';
+    // Detalhe da camisa (colete)
+    ctx.fillStyle = '#5a3a1a';
+    ctx.fillRect(-8, -r * 0.5, 16, 4);
+    ctx.fillStyle = '#3a2a0a';
+    ctx.fillRect(-8, r * 0.3, 16, 3);
+    
+    // Braços
+    ctx.fillStyle = '#f0b088';
+    // braço esquerdo
+    ctx.fillRect(-11, -r * 0.5, 4, r * 0.9);
+    // braço direito (segurando arma)
+    ctx.fillRect(7, -r * 0.5, 4, r * 0.9);
+    
+    // Cabeça
+    ctx.fillStyle = '#f4c49a';
     ctx.beginPath();
-    ctx.arc(0, -2, player.raio * 0.55, 0, Math.PI * 2);
+    ctx.arc(0, -r * 0.9, r * 0.62, 0, Math.PI * 2);
     ctx.fill();
+    ctx.strokeStyle = '#8a5a3a';
+    ctx.lineWidth = 1.5;
     ctx.stroke();
     
-    // arma (cano)
+    // Cabelo
+    ctx.fillStyle = '#2a1a0a';
+    ctx.beginPath();
+    ctx.arc(0, -r * 0.9, r * 0.62, Math.PI, Math.PI * 2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.arc(-r * 0.5, -r * 1.05, r * 0.25, 0, Math.PI * 2);
+    ctx.arc(r * 0.5, -r * 1.05, r * 0.25, 0, Math.PI * 2);
+    ctx.fill();
+    
+    // Olhos (voltados na direção do mouse)
+    const olhoDX = Math.cos(player.angulo) * 2;
+    const olhoDY = Math.sin(player.angulo) * 2;
+    ctx.fillStyle = '#fff';
+    ctx.beginPath();
+    ctx.arc(-4 + olhoDX, -r * 0.95 + olhoDY, 2.5, 0, Math.PI * 2);
+    ctx.arc(4 + olhoDX, -r * 0.95 + olhoDY, 2.5, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#1a3a6a';
+    ctx.beginPath();
+    ctx.arc(-4 + olhoDX * 1.3, -r * 0.95 + olhoDY * 1.3, 1.3, 0, Math.PI * 2);
+    ctx.arc(4 + olhoDX * 1.3, -r * 0.95 + olhoDY * 1.3, 1.3, 0, Math.PI * 2);
+    ctx.fill();
+    
+    // Sobrancelhas
+    ctx.strokeStyle = '#2a1a0a';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(-6, -r * 1.15);
+    ctx.lineTo(-2, -r * 1.1);
+    ctx.moveTo(2, -r * 1.1);
+    ctx.lineTo(6, -r * 1.15);
+    ctx.stroke();
+    
+    // Boca
+    ctx.strokeStyle = '#8a3a2a';
+    ctx.lineWidth = 1.2;
+    ctx.beginPath();
+    ctx.arc(0, -r * 0.72, 3, 0.1, Math.PI - 0.1);
+    ctx.stroke();
+    
+    // Arma (gira em torno do jogador)
     ctx.rotate(player.angulo);
-    ctx.fillStyle = '#555';
-    ctx.fillRect(player.raio - 2, -3, 18, 6);
+    const arma = armaAtual();
+    // braço estendido segurando
+    ctx.fillStyle = '#f0b088';
+    ctx.fillRect(r * 0.35, -2, 10, 5);
+    // cano da arma
     ctx.fillStyle = '#333';
-    ctx.fillRect(player.raio + 10, -2, 6, 4);
+    ctx.fillRect(r * 0.7, -3, 14, 6);
+    ctx.fillStyle = '#555';
+    ctx.fillRect(r * 0.7, -2, 14, 2);
+    // mira
+    ctx.fillStyle = arma.cor;
+    ctx.fillRect(r * 0.7 + 12, -2, 3, 3);
+    // brilho da arma colorida
+    ctx.fillStyle = arma.cor;
+    ctx.globalAlpha *= 0.6;
+    ctx.fillRect(r * 0.7 + 1, -1, 6, 2);
+    ctx.globalAlpha = 1;
     
     ctx.restore();
   }
@@ -580,13 +714,11 @@
     ctx.save();
     ctx.translate(z.x, z.y);
     
-    // sombra
     ctx.fillStyle = 'rgba(0,0,0,0.5)';
     ctx.beginPath();
     ctx.ellipse(2, 4, z.raio, z.raio * 0.7, 0, 0, Math.PI * 2);
     ctx.fill();
     
-    // corpo
     const corCorpo = z.tipo === 'rapido' ? '#6a3' : '#4a5a3a';
     ctx.fillStyle = corCorpo;
     ctx.beginPath();
@@ -596,7 +728,6 @@
     ctx.lineWidth = 2;
     ctx.stroke();
     
-    // braços esticados (para o player)
     ctx.save();
     ctx.rotate(z.angulo);
     ctx.fillStyle = corCorpo;
@@ -607,14 +738,12 @@
     ctx.strokeRect(z.raio * 0.4, z.raio * 0.35, z.raio * 0.9, z.raio * 0.35);
     ctx.restore();
     
-    // olhos vermelhos
     ctx.fillStyle = '#f00';
     ctx.beginPath();
     ctx.arc(-3, -4, 2.5, 0, Math.PI * 2);
     ctx.arc(3, -4, 2.5, 0, Math.PI * 2);
     ctx.fill();
     
-    // boca
     ctx.strokeStyle = '#111';
     ctx.lineWidth = 1.5;
     ctx.beginPath();
@@ -624,7 +753,6 @@
     ctx.lineTo(4, 7);
     ctx.stroke();
     
-    // barra de vida
     if (z.vida < z.vidaMax) {
       const w = z.raio * 2;
       ctx.fillStyle = 'rgba(0,0,0,0.6)';
@@ -639,9 +767,8 @@
   function desenhar() {
     desenharCidade();
     
-    // partículas (atrás dos personagens)
     for (const p of particulas) {
-      ctx.globalAlpha = Math.min(1, p.vida / 20);
+      ctx.globalAlpha = p.vida / p.vidaMax;
       ctx.fillStyle = p.cor;
       ctx.beginPath();
       ctx.arc(p.x, p.y, p.tamanho, 0, Math.PI * 2);
@@ -649,36 +776,32 @@
     }
     ctx.globalAlpha = 1;
     
-    // zumbis
     for (const z of zumbis) desenharZumbi(z);
     
-    // tiros
     for (const t of tiros) {
-      // rastro
-      ctx.strokeStyle = 'rgba(255,220,100,0.6)';
-      ctx.lineWidth = 3;
+      ctx.strokeStyle = t.cor;
+      ctx.globalAlpha = 0.5;
+      ctx.lineWidth = t.raio * 1.2;
       ctx.beginPath();
       ctx.moveTo(t.x, t.y);
-      ctx.lineTo(t.x - t.vx * 1.5, t.y - t.vy * 1.5);
+      ctx.lineTo(t.x - t.vx * 1.2, t.y - t.vy * 1.2);
       ctx.stroke();
+      ctx.globalAlpha = 1;
       
-      // projétil
-      ctx.fillStyle = '#ffd44d';
+      ctx.fillStyle = t.cor;
       ctx.beginPath();
       ctx.arc(t.x, t.y, t.raio, 0, Math.PI * 2);
       ctx.fill();
       ctx.fillStyle = '#fff';
       ctx.beginPath();
-      ctx.arc(t.x, t.y, t.raio * 0.5, 0, Math.PI * 2);
+      ctx.arc(t.x, t.y, t.raio * 0.45, 0, Math.PI * 2);
       ctx.fill();
     }
     
-    // player
     desenharPlayer();
     
-    // mira do mouse
     if (!gameOver) {
-      ctx.strokeStyle = 'rgba(255,80,80,0.8)';
+      ctx.strokeStyle = 'rgba(255,80,80,0.85)';
       ctx.lineWidth = 2;
       ctx.beginPath();
       ctx.arc(mouse.x, mouse.y, 10, 0, Math.PI * 2);
@@ -696,20 +819,28 @@
     }
   }
   
-  // ===== Loop principal =====
-  let ultimoTempo = 0;
+  // ===== Loop com timestep fixo (estável em qualquer FPS) =====
   function loop(tempo) {
     if (!rodando) return;
-    const dt = Math.min(50, tempo - ultimoTempo) / 16.67;
+    
+    let delta = tempo - ultimoTempo;
+    if (delta > 100) delta = 100; // evita saltos em tab inativa
     ultimoTempo = tempo;
+    acumuladorFixo += delta;
     
-    if (!gameOver) atualizar(dt);
+    while (acumuladorFixo >= DT_FIXO) {
+      if (!gameOver) atualizar(DT_FIXO / 16.67);
+      acumuladorFixo -= DT_FIXO;
+    }
+    
     desenhar();
-    
     requestAnimationFrame(loop);
   }
   
   // ===== Controles =====
+  const teclas = {};
+  const mouse = { x: W/2, y: H/2, down: false };
+  
   window.addEventListener('keydown', e => {
     const k = e.key.toLowerCase();
     teclas[k] = true;
@@ -729,22 +860,45 @@
     if (e.button === 0 && rodando && !gameOver) {
       mouse.down = true;
       atirar();
+      iniciarTiroAuto();
     }
   });
-  canvas.addEventListener('mouseup', () => mouse.down = false);
+  canvas.addEventListener('mouseup', () => { mouse.down = false; pararTiroAuto(); });
+  canvas.addEventListener('mouseleave', () => { mouse.down = false; pararTiroAuto(); });
   canvas.addEventListener('contextmenu', e => e.preventDefault());
   
-  // Tiro automático ao segurar
-  setInterval(() => {
-    if (rodando && !gameOver && mouse.down) atirar();
-  }, 130);
+  // Tiro automático com base na cadência da arma
+  let tiroAutoId = null;
+  function iniciarTiroAuto() {
+    pararTiroAuto();
+    const cad = armaAtual().cadencia;
+    tiroAutoId = setTimeout(function tick() {
+      if (!mouse.down || !rodando || gameOver) return;
+      atirar();
+      const novaCad = armaAtual().cadencia;
+      tiroAutoId = setTimeout(tick, novaCad);
+    }, cad);
+  }
+  function pararTiroAuto() {
+    if (tiroAutoId) { clearTimeout(tiroAutoId); tiroAutoId = null; }
+  }
   
-  // ===== Início / Fim =====
+  // ===== HUD =====
+  function atualizarHUD() {
+    elVida.textContent = Math.ceil(player.vida);
+    elBarra.style.width = (player.vida / player.vidaMax * 100) + '%';
+    elMortos.textContent = mortos;
+    elOnda.textContent = onda;
+    elArma.textContent = armaAtual().nome + ' (Nv.' + (nivelArma + 1) + ')';
+  }
+  
+  // ===== Início/Fim =====
   function iniciarJogo() {
     player.x = W/2;
     player.y = H/2;
     player.vida = player.vidaMax;
     player.invulneravel = 0;
+    player.passoAnim = 0;
     
     zumbis = [];
     tiros = [];
@@ -755,10 +909,15 @@
     zumbisSpawnados = 0;
     tempoSpawn = 0;
     tempoJogo = 0;
+    nivelArma = 0;
     gameOver = false;
+    acumuladorFixo = 0;
+    avisoTimer = 0;
+    elAvisoNivel.style.opacity = '0';
     
     gerarCidade();
     iniciarOnda();
+    atualizarHUD();
     
     overlay.classList.add('oculto');
     rodando = true;
@@ -769,11 +928,13 @@
   function finalizarJogo() {
     gameOver = true;
     rodando = false;
+    pararTiroAuto();
     overlay.classList.remove('oculto');
     overlay.innerHTML = `
       <h1>VOCÊ MORREU</h1>
       <p>💀 Zumbis mortos: ${mortos}</p>
       <p>🌊 Ondas sobrevividas: ${onda - 1}</p>
+      <p>🔫 Arma final: ${armaAtual().nome}</p>
       <button id="btnReiniciar">TENTAR NOVAMENTE</button>
     `;
     document.getElementById('btnReiniciar').addEventListener('click', iniciarJogo);
@@ -781,7 +942,7 @@
   
   btnIniciar.addEventListener('click', iniciarJogo);
   
-  // ===== Render inicial (fundo) =====
+  // Render inicial
   gerarCidade();
   desenharCidade();
 })();
