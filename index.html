@@ -78,7 +78,6 @@
   .p2-cor { color: #6cf; }
   #armaInfo1, #armaInfo2 { color: #ffd44d; }
   
-  /* ===== Info geral (centro topo) ===== */
   #hudGeral {
     position: absolute;
     top: 12px; left: 50%;
@@ -98,7 +97,6 @@
     border: 1px solid #333;
   }
   
-  /* ===== Minimapa ===== */
   #minimapa {
     position: absolute;
     bottom: 12px; left: 12px;
@@ -129,6 +127,28 @@
   #btnReiniciarTop:hover {
     background: #d00;
     box-shadow: 0 0 20px rgba(255,0,0,0.9);
+    transform: scale(1.05);
+  }
+  
+  #btnPausarTop {
+    position: absolute;
+    top: 12px; right: 130px;
+    padding: 7px 14px;
+    background: rgba(160,120,20,0.85);
+    color: #fff;
+    border: 2px solid #fd3;
+    border-radius: 5px;
+    font-size: 12px;
+    font-weight: bold;
+    cursor: pointer;
+    letter-spacing: 1px;
+    z-index: 12;
+    transition: 0.2s;
+    font-family: 'Courier New', monospace;
+  }
+  #btnPausarTop:hover {
+    background: #da0;
+    box-shadow: 0 0 20px rgba(255,200,0,0.9);
     transform: scale(1.05);
   }
   
@@ -193,6 +213,57 @@
   }
   .oculto { display: none !important; }
   
+  /* ===== Overlay de PAUSA ===== */
+  #pauseOverlay {
+    position: absolute;
+    inset: 0;
+    background: rgba(0,0,0,0.78);
+    backdrop-filter: blur(3px);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    color: #fff;
+    z-index: 18;
+    text-align: center;
+    padding: 20px;
+  }
+  #pauseOverlay h1 {
+    font-size: 52px;
+    color: #fd3;
+    text-shadow: 0 0 30px #fa0, 0 0 60px #f80, 3px 3px 8px #000;
+    margin-bottom: 12px;
+    letter-spacing: 10px;
+    font-family: 'Courier New', monospace;
+  }
+  #pauseOverlay p {
+    font-size: 14px;
+    color: #ccc;
+    font-family: 'Courier New', monospace;
+    letter-spacing: 1px;
+    margin: 6px 0;
+  }
+  #pauseOverlay button {
+    margin-top: 25px;
+    padding: 14px 40px;
+    font-size: 18px;
+    background: linear-gradient(180deg, #da0, #960);
+    color: #fff;
+    border: 2px solid #fd3;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: bold;
+    letter-spacing: 3px;
+    transition: 0.2s;
+    font-family: 'Courier New', monospace;
+    text-shadow: 1px 1px 2px #000;
+  }
+  #pauseOverlay button:hover {
+    background: linear-gradient(180deg, #fc0, #b70);
+    box-shadow: 0 0 30px #fd3;
+    transform: scale(1.05);
+  }
+  
   #avisoNivel {
     position: absolute;
     top: 50%; left: 50%;
@@ -244,15 +315,25 @@
   
   <canvas id="minimapa" width="150" height="100"></canvas>
   
+  <button id="btnPausarTop">⏸ PAUSAR (P)</button>
   <button id="btnReiniciarTop">⟳ REINICIAR</button>
   <div id="avisoNivel"></div>
+  
+  <!-- Overlay de pausa -->
+  <div id="pauseOverlay" class="oculto">
+    <h1>PAUSADO</h1>
+    <p>Pressione <b style="color:#fd3">P</b> ou <b style="color:#fd3">Esc</b> para continuar</p>
+    <p>Pressione <b style="color:#f66">R</b> para reiniciar</p>
+    <button id="btnContinuar">CONTINUAR</button>
+  </div>
   
   <div id="overlay">
     <h1>ZOMBIE CITY</h1>
     <p>Mapa gigante • Sobreviva às hordas</p>
     <p style="margin-top:10px; color:#6f6;">P1: WASD + Mouse (mirar/atirar)</p>
     <p style="color:#6cf;">P2: IJKL + Espaço (mira automática)</p>
-    <p style="color:#ff6666; margin-top:8px;">🧟 Zumbis mais fortes a cada 30 mortos</p>
+    <p style="color:#fd3; margin-top:8px;">⏸ P ou ESC para pausar a qualquer momento</p>
+    <p style="color:#ff6666;">🧟 Zumbis mais fortes a cada 30 mortos</p>
     <p style="color:#ffd44d;">🔫 Arma evolui a cada 20 mortos por jogador</p>
     <p style="color:#3f6;">💚 Vida e 🛡 escudo dropam de zumbis</p>
     <div class="modos">
@@ -276,7 +357,6 @@
   const MW = minimapaCanvas.width;
   const MH = minimapaCanvas.height;
   
-  // Mapa do mundo (muito maior que a tela)
   const MAPA_W = 3000;
   const MAPA_H = 2400;
   
@@ -295,20 +375,23 @@
   const elEscudo2 = document.getElementById('escudo2Txt');
   const elArma2 = document.getElementById('arma2Txt');
   const overlay = document.getElementById('overlay');
+  const pauseOverlay = document.getElementById('pauseOverlay');
   const btnIniciar1 = document.getElementById('btnIniciar1');
   const btnIniciar2 = document.getElementById('btnIniciar2');
   const btnReiniciarTop = document.getElementById('btnReiniciarTop');
+  const btnPausarTop = document.getElementById('btnPausarTop');
+  const btnContinuar = document.getElementById('btnContinuar');
   const elAvisoNivel = document.getElementById('avisoNivel');
   
   // ===== Estado =====
   let rodando = false;
   let gameOver = false;
+  let pausado = false;
   let doisJogadores = false;
   let ultimoTempo = 0;
   let acumuladorFixo = 0;
   const DT_FIXO = 1000 / 60;
   
-  // Câmera
   const camera = { x: 0, y: 0 };
   
   let jogadores = [];
@@ -357,8 +440,6 @@
     const tctx = texturaChao.getContext('2d');
     tctx.fillStyle = '#1e1e1e';
     tctx.fillRect(0, 0, MAPA_W, MAPA_H);
-    
-    // Ruído do asfalto
     for (let i = 0; i < 15000; i++) {
       const x = Math.random() * MAPA_W;
       const y = Math.random() * MAPA_H;
@@ -366,8 +447,6 @@
       tctx.fillStyle = `rgba(${g},${g},${g},${Math.random() * 0.5})`;
       tctx.fillRect(x, y, 2, 2);
     }
-    
-    // Rachaduras
     tctx.strokeStyle = 'rgba(0,0,0,0.5)';
     tctx.lineWidth = 1;
     for (let i = 0; i < 80; i++) {
@@ -382,8 +461,6 @@
       }
       tctx.stroke();
     }
-    
-    // Ruas cruzadas (faixas amarelas) — grid do mapa
     tctx.fillStyle = 'rgba(220,200,50,0.35)';
     for (let y = 20; y < MAPA_H; y += 50) {
       for (let x = 0; x < MAPA_W; x += 500) {
@@ -395,8 +472,6 @@
         tctx.fillRect(x, y + 246, 30, 8);
       }
     }
-    
-    // Poças
     for (let i = 0; i < 40; i++) {
       const px = Math.random() * MAPA_W;
       const py = Math.random() * MAPA_H;
@@ -414,15 +489,12 @@
     predios.length = 0;
     carros.length = 0;
     postes.length = 0;
-    
-    // Prédios por todo o mapa
     for (let i = 0; i < 200; i++) {
       const w = 60 + Math.random() * 90;
       const h = 60 + Math.random() * 120;
       const x = Math.random() * (MAPA_W - w);
       const y = Math.random() * (MAPA_H - h);
       const cx = x + w/2, cy = y + h/2;
-      // Evita centro de spawn
       if (Math.hypot(cx - MAPA_W/2, cy - MAPA_H/2) < 200) continue;
       let sobrepoe = false;
       for (const p of predios) {
@@ -440,8 +512,6 @@
         janelas, janelasCols, janelasLuz
       });
     }
-    
-    // Carros espalhados
     for (let i = 0; i < 30; i++) {
       const x = 80 + Math.random() * (MAPA_W - 160);
       const y = 80 + Math.random() * (MAPA_H - 160);
@@ -452,8 +522,6 @@
         cor: ['#5a1a1a','#2a3a4a','#4a4a2a','#3a2a4a'][Math.floor(Math.random()*4)]
       });
     }
-    
-    // Postes espalhados
     for (let i = 0; i < 60; i++) {
       postes.push({
         x: 40 + Math.random() * (MAPA_W - 80),
@@ -490,7 +558,6 @@
   }
   
   function spawnZumbi() {
-    // Spawn em volta da câmera (fora da tela mas perto)
     const lado = Math.floor(Math.random() * 4);
     let x, y;
     const m = 80;
@@ -499,7 +566,6 @@
     else if (lado === 2) { x = camera.x + Math.random() * W; y = camera.y + H + m; }
     else { x = camera.x - m; y = camera.y + Math.random() * H; }
     
-    // Limita ao mapa
     x = Math.max(20, Math.min(MAPA_W - 20, x));
     y = Math.max(20, Math.min(MAPA_H - 20, y));
     
@@ -508,6 +574,7 @@
     const vidaBase = rapido ? 30 : 50;
     const velBase = rapido ? 1.9 : 1.2;
     const tonsPele = ['#4a5a3a', '#3a4a2a', '#5a6a4a', '#4a4a3a', '#5a4a3a'];
+    const tonsRoupa = ['#3a2a1a', '#2a2a3a', '#3a3a2a', '#4a2a2a', '#2a3a2a'];
     
     zumbis.push({
       x, y,
@@ -520,8 +587,16 @@
       angulo: 0,
       wobble: Math.random() * Math.PI * 2,
       pele: tonsPele[Math.floor(Math.random() * tonsPele.length)],
+      roupa: tonsRoupa[Math.floor(Math.random() * tonsRoupa.length)],
       sangue: Math.random() < 0.3 ? '#600' : '#a00',
-      passo: Math.random() * Math.PI * 2
+      passo: Math.random() * Math.PI * 2,
+      // Detalhes únicos por zumbi
+      feridaX: (Math.random() - 0.5) * 10,
+      feridaY: (Math.random() - 0.5) * 10,
+      tamanhoFerida: 2 + Math.random() * 2,
+      cabelo: Math.random() < 0.6,
+      mancando: Math.random() < 0.4,
+      ladoMancando: Math.random() < 0.5 ? 1 : -1
     });
     zumbisSpawnados++;
   }
@@ -545,7 +620,6 @@
         dono: p
       });
     }
-    
     for (let i = 0; i < 5; i++) {
       particulas.push({
         x: p.x + Math.cos(anguloBase) * p.raio,
@@ -623,29 +697,21 @@
   // ===== Câmera =====
   function atualizarCamera(dt) {
     if (jogadores.length === 0) return;
-    
     let alvoX, alvoY;
     if (jogadores.length === 1 || (jogadores[1] && jogadores[1].vida <= 0)) {
-      // Só P1 vivo
       alvoX = jogadores[0].x - W/2;
       alvoY = jogadores[0].y - H/2;
     } else if (jogadores[0].vida <= 0) {
-      // Só P2 vivo
       alvoX = jogadores[1].x - W/2;
       alvoY = jogadores[1].y - H/2;
     } else {
-      // Ambos: centro entre eles
       const cx = (jogadores[0].x + jogadores[1].x) / 2;
       const cy = (jogadores[0].y + jogadores[1].y) / 2;
       alvoX = cx - W/2;
       alvoY = cy - H/2;
     }
-    
-    // Suaviza movimento
     camera.x += (alvoX - camera.x) * 0.15;
     camera.y += (alvoY - camera.y) * 0.15;
-    
-    // Limita ao mapa
     camera.x = Math.max(0, Math.min(MAPA_W - W, camera.x));
     camera.y = Math.max(0, Math.min(MAPA_H - H, camera.y));
   }
@@ -661,7 +727,6 @@
     if (flashTela > 0) flashTela -= dt;
     if (tremorTela > 0) tremorTela = Math.max(0, tremorTela - dt * 0.3);
     
-    // Movimento
     for (const p of jogadores) {
       if (p.vida <= 0) continue;
       p.respira += dt * 0.08;
@@ -691,7 +756,6 @@
       if (p.id === 1) {
         p.angulo = Math.atan2(mouse.y + camera.y - p.y, mouse.x + camera.x - p.x);
       } else {
-        // P2 mira no zumbi mais próximo
         let alvo = null, menorD = Infinity;
         for (const z of zumbis) {
           const d = (z.x - p.x) ** 2 + (z.y - p.y) ** 2;
@@ -699,11 +763,9 @@
         }
         if (alvo) p.angulo = Math.atan2(alvo.y - p.y, alvo.x - p.x);
       }
-      
       if (p.invulneravel > 0) p.invulneravel -= dt;
     }
     
-    // Spawn
     if (zumbisSpawnados < zumbisParaOnda) {
       tempoSpawn += dt;
       if (tempoSpawn > 30) { tempoSpawn = 0; spawnZumbi(); }
@@ -713,10 +775,8 @@
       for (const p of jogadores) p.vida = Math.min(p.vidaMax, p.vida + 15);
     }
     
-    // Zumbis
     for (let i = zumbis.length - 1; i >= 0; i--) {
       const z = zumbis[i];
-      // Alvo: jogador vivo mais próximo
       let alvo = null, menorD = Infinity;
       for (const p of jogadores) {
         if (p.vida <= 0) continue;
@@ -728,7 +788,8 @@
       const ang = Math.atan2(alvo.y - z.y, alvo.x - z.x);
       z.angulo = ang;
       z.wobble += 0.15 * dt;
-      z.passo += dt * 0.3;
+      // Velocidade da animação de caminhada proporcional à velocidade
+      z.passo += dt * 0.35 * z.vel;
       z.x += (Math.cos(ang) * z.vel + Math.cos(z.wobble) * 0.3) * dt;
       z.y += (Math.sin(ang) * z.vel + Math.sin(z.wobble) * 0.3) * dt;
       
@@ -754,7 +815,6 @@
       }
     }
     
-    // Game over
     let algumVivo = false;
     for (const p of jogadores) if (p.vida > 0) algumVivo = true;
     if (!algumVivo) {
@@ -763,7 +823,6 @@
       return;
     }
     
-    // Tiros
     for (let i = tiros.length - 1; i >= 0; i--) {
       const t = tiros[i];
       t.x += t.vx * dt;
@@ -801,7 +860,6 @@
       if (acertou) tiros.splice(i, 1);
     }
     
-    // Bônus
     for (let i = bonus.length - 1; i >= 0; i--) {
       const b = bonus[i];
       b.vida -= dt;
@@ -818,7 +876,6 @@
       }
     }
     
-    // Partículas
     for (let i = particulas.length - 1; i >= 0; i--) {
       const p = particulas[i];
       p.x += p.vx * dt;
@@ -834,23 +891,16 @@
   
   // ===== Render =====
   function desenharCidade() {
-    // Só desenha o que está na tela (culling)
     const cx1 = camera.x, cy1 = camera.y;
     const cx2 = cx1 + W, cy2 = cy1 + H;
     
-    // Fundo (textura do chão)
     if (texturaChao) {
-      ctx.drawImage(
-        texturaChao,
-        cx1, cy1, W, H,
-        0, 0, W, H
-      );
+      ctx.drawImage(texturaChao, cx1, cy1, W, H, 0, 0, W, H);
     } else {
       ctx.fillStyle = '#1e1e1e';
       ctx.fillRect(0, 0, W, H);
     }
     
-    // Manchas de sangue (culling)
     for (const m of manchas) {
       if (m.x + m.raio < cx1 || m.x - m.raio > cx2 || m.y + m.raio < cy1 || m.y - m.raio > cy2) continue;
       ctx.globalAlpha = m.alfa * 0.7;
@@ -861,7 +911,6 @@
     }
     ctx.globalAlpha = 1;
     
-    // Postes (culling)
     for (const p of postes) {
       if (p.x < cx1 - 90 || p.x > cx2 + 90 || p.y < cy1 - 90 || p.y > cy2 + 90) continue;
       const grad = ctx.createRadialGradient(p.x, p.y, 5, p.x, p.y, 90);
@@ -882,7 +931,6 @@
       ctx.fill();
     }
     
-    // Prédios (culling)
     for (const p of predios) {
       if (p.x + p.w < cx1 || p.x > cx2 || p.y + p.h < cy1 || p.y > cy2) continue;
       ctx.fillStyle = 'rgba(0,0,0,0.65)';
@@ -920,7 +968,6 @@
       }
     }
     
-    // Carros (culling)
     for (const c of carros) {
       if (c.x + 60 < cx1 || c.x - 60 > cx2 || c.y + 60 < cy1 || c.y - 60 > cy2) continue;
       ctx.save();
@@ -948,7 +995,6 @@
       ctx.restore();
     }
     
-    // Bordas do mapa (cerca)
     ctx.strokeStyle = '#600';
     ctx.lineWidth = 8;
     ctx.strokeRect(0, 0, MAPA_W, MAPA_H);
@@ -1153,81 +1199,203 @@
     ctx.restore();
   }
   
+  // ===== ZUMBI REALISTA =====
   function desenharZumbi(z) {
-    const anda = Math.sin(z.passo) * 1.5;
-    ctx.save();
-    ctx.translate(z.x, z.y);
+    // Animação de caminhada (balanço dos braços e pernas)
+    const swingBraco = Math.sin(z.passo) * 4;
+    const swingPerna = Math.sin(z.passo + Math.PI) * 2.5;
+    const cabecaOscila = Math.sin(z.passo * 0.7) * 1;
+    const tremida = Math.sin(tempoJogo * 8 + z.wobble) * 0.4;
     
+    ctx.save();
+    ctx.translate(z.x + tremida, z.y);
+    
+    // Sombra
     ctx.fillStyle = 'rgba(0,0,0,0.55)';
     ctx.beginPath();
     ctx.ellipse(2, 4, z.raio * 1.05, z.raio * 0.7, 0, 0, Math.PI * 2);
     ctx.fill();
     
-    const corCorpo = z.pele;
+    // Gira o zumbi para a direção que ele está andando
     ctx.save();
     ctx.rotate(z.angulo);
-    ctx.fillStyle = corCorpo;
-    ctx.fillRect(z.raio * 0.4, -z.raio * 0.7, z.raio * 0.9, z.raio * 0.35);
-    ctx.fillRect(z.raio * 0.4, z.raio * 0.35, z.raio * 0.9, z.raio * 0.35);
-    ctx.strokeStyle = '#0a0a0a';
-    ctx.lineWidth = 1.5;
-    ctx.strokeRect(z.raio * 0.4, -z.raio * 0.7, z.raio * 0.9, z.raio * 0.35);
-    ctx.strokeRect(z.raio * 0.4, z.raio * 0.35, z.raio * 0.9, z.raio * 0.35);
-    ctx.fillStyle = '#6a7a5a';
+    
+    const r = z.raio;
+    const corPele = z.pele;
+    const corRoupa = z.roupa;
+    
+    // Pernas (com animação de caminhada)
+    ctx.fillStyle = '#1a1410';
+    ctx.fillRect(-6 + swingPerna * 0.3, 2, 5, r + swingPerna * 0.5);
+    ctx.fillRect(2 - swingPerna * 0.3, 2, 5, r - swingPerna * 0.5);
+    // Sapatos surrados
+    ctx.fillStyle = '#050505';
+    ctx.fillRect(-6 + swingPerna * 0.3, r + swingPerna * 0.5 - 1, 5, 4);
+    ctx.fillRect(2 - swingPerna * 0.3, r - swingPerna * 0.5 - 1, 5, 4);
+    
+    // Corpo (roupa rasgada)
+    const gradCorpo = ctx.createLinearGradient(-8, -r * 0.7, 8, r * 0.5);
+    gradCorpo.addColorStop(0, corRoupa);
+    gradCorpo.addColorStop(0.5, '#1a1410');
+    gradCorpo.addColorStop(1, corRoupa);
+    ctx.fillStyle = gradCorpo;
     ctx.beginPath();
-    ctx.arc(z.raio * 1.3, -z.raio * 0.5, 3, 0, Math.PI * 2);
-    ctx.arc(z.raio * 1.3, z.raio * 0.5, 3, 0, Math.PI * 2);
+    ctx.roundRect(-8, -r * 0.7, 16, r * 1.2, 3);
     ctx.fill();
+    
+    // Rasgos na roupa (buracos escuros)
+    ctx.fillStyle = '#0a0806';
+    ctx.beginPath();
+    ctx.arc(-3, -r * 0.2, 2.5, 0, Math.PI * 2);
+    ctx.arc(4, r * 0.2, 2, 0, Math.PI * 2);
+    ctx.fill();
+    
+    // Ferida exposta no torso (sangue escorrendo)
+    ctx.fillStyle = 'rgba(120,10,10,0.85)';
+    ctx.beginPath();
+    ctx.arc(z.feridaX * 0.6, z.feridaY * 0.6, z.tamanhoFerida, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = 'rgba(180,20,20,0.6)';
+    ctx.fillRect(z.feridaX * 0.6 - 0.5, z.feridaY * 0.6, 1, 4 + Math.random() * 2);
+    
+    // Braços esticados para frente (zumbi clássico) com balanço
+    // Braço esquerdo (atrás)
+    ctx.fillStyle = corPele;
+    ctx.save();
+    ctx.translate(-6, -r * 0.5);
+    ctx.rotate(-0.2 + swingBraco * 0.03);
+    ctx.fillRect(0, -2, r * 0.9, 4.5);
+    // Mão esquerda (podre)
+    ctx.fillStyle = '#5a6a4a';
+    ctx.beginPath();
+    ctx.arc(r * 0.9, 0, 3, 0, Math.PI * 2);
+    ctx.fill();
+    // Dedos
+    ctx.strokeStyle = '#3a4a2a';
+    ctx.lineWidth = 1;
+    for (let i = 0; i < 3; i++) {
+      ctx.beginPath();
+      ctx.moveTo(r * 0.9 + 2, -1 + i);
+      ctx.lineTo(r * 0.9 + 4, -1 + i);
+      ctx.stroke();
+    }
     ctx.restore();
     
-    const grad = ctx.createRadialGradient(-z.raio*0.3, -z.raio*0.3, 1, 0, 0, z.raio * 1.2);
-    grad.addColorStop(0, corCorpo);
-    grad.addColorStop(1, '#0a0a0a');
-    ctx.fillStyle = grad;
+    // Braço direito (na frente)
+    ctx.fillStyle = corPele;
+    ctx.save();
+    ctx.translate(-6, r * 0.4);
+    ctx.rotate(0.2 - swingBraco * 0.03);
+    ctx.fillRect(0, -2, r * 0.9, 4.5);
+    // Mão direita
+    ctx.fillStyle = '#5a6a4a';
     ctx.beginPath();
-    ctx.arc(0, 0, z.raio, 0, Math.PI * 2);
+    ctx.arc(r * 0.9, 0, 3, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = '#3a4a2a';
+    ctx.lineWidth = 1;
+    for (let i = 0; i < 3; i++) {
+      ctx.beginPath();
+      ctx.moveTo(r * 0.9 + 2, -1 + i);
+      ctx.lineTo(r * 0.9 + 4, -1 + i);
+      ctx.stroke();
+    }
+    ctx.restore();
+    
+    // Cabeça (levemente inclinada — zumbis ficam com pescoço torto)
+    ctx.save();
+    ctx.translate(0, -r * 0.9);
+    ctx.rotate(0.25 + cabecaOscila * 0.02);
+    
+    const gCabeca = ctx.createRadialGradient(-2, -2, 1, 0, 0, r * 0.65);
+    gCabeca.addColorStop(0, corPele);
+    gCabeca.addColorStop(1, '#0a0a0a');
+    ctx.fillStyle = gCabeca;
+    ctx.beginPath();
+    ctx.arc(0, 0, r * 0.62, 0, Math.PI * 2);
     ctx.fill();
     ctx.strokeStyle = '#000';
     ctx.lineWidth = 1.5;
     ctx.stroke();
     
-    ctx.fillStyle = 'rgba(120,10,10,0.75)';
-    ctx.beginPath();
-    ctx.arc(-z.raio*0.3, z.raio*0.2 + anda*0.3, 2.5, 0, Math.PI * 2);
-    ctx.arc(z.raio*0.4, -z.raio*0.1, 2, 0, Math.PI * 2);
-    ctx.fill();
+    // Cabelo ralo (alguns têm, outros não)
+    if (z.cabelo) {
+      ctx.fillStyle = '#1a0a05';
+      ctx.beginPath();
+      ctx.arc(0, 0, r * 0.62, Math.PI, Math.PI * 2);
+      ctx.fill();
+      // Fios soltos
+      ctx.strokeStyle = '#1a0a05';
+      ctx.lineWidth = 1.5;
+      for (let i = -2; i <= 2; i++) {
+        ctx.beginPath();
+        ctx.moveTo(i * 3, -r * 0.55);
+        ctx.lineTo(i * 3 + (Math.random() - 0.5) * 2, -r * 0.75);
+        ctx.stroke();
+      }
+    }
     
-    const olhoGrad = ctx.createRadialGradient(-3, -4, 0, -3, -4, 4);
+    // Olhos vermelhos brilhantes (um maior que o outro, realista)
+    const olhoGrad = ctx.createRadialGradient(-3, -2, 0, -3, -2, 4);
     olhoGrad.addColorStop(0, '#fff');
     olhoGrad.addColorStop(0.3, '#f00');
     olhoGrad.addColorStop(1, 'rgba(180,0,0,0)');
     ctx.fillStyle = olhoGrad;
     ctx.beginPath();
-    ctx.arc(-3, -4, 4, 0, Math.PI * 2);
-    ctx.arc(3, -4, 4, 0, Math.PI * 2);
+    ctx.arc(-3, -2, 4, 0, Math.PI * 2);
+    ctx.arc(4, -1, 3.5, 0, Math.PI * 2);
     ctx.fill();
+    // Pupilas mortas
     ctx.fillStyle = '#f00';
     ctx.beginPath();
-    ctx.arc(-3, -4, 1.8, 0, Math.PI * 2);
-    ctx.arc(3, -4, 1.8, 0, Math.PI * 2);
+    ctx.arc(-3, -2, 1.8, 0, Math.PI * 2);
+    ctx.arc(4, -1, 1.5, 0, Math.PI * 2);
     ctx.fill();
     
-    ctx.strokeStyle = '#300';
-    ctx.lineWidth = 1.5;
+    // Olheiras escuras
+    ctx.fillStyle = 'rgba(0,0,0,0.4)';
     ctx.beginPath();
-    ctx.moveTo(-4, 5); ctx.lineTo(-1, 7); ctx.lineTo(1, 5); ctx.lineTo(4, 7);
-    ctx.stroke();
-    ctx.fillStyle = '#ddd';
-    ctx.fillRect(-3, 5.5, 1.5, 1.5);
-    ctx.fillRect(0.5, 5.5, 1.5, 1.5);
+    ctx.arc(-3, -2, 3.5, 0.2, Math.PI - 0.2);
+    ctx.arc(4, -1, 3, 0.2, Math.PI - 0.2);
+    ctx.fill();
     
+    // Boca aberta com dentes e sangue
+    ctx.fillStyle = '#1a0505';
+    ctx.beginPath();
+    ctx.ellipse(1, 6, 5, 3, 0.2, 0, Math.PI * 2);
+    ctx.fill();
+    // Dentes tortos
+    ctx.fillStyle = '#c8c0a0';
+    ctx.fillRect(-2, 4, 1.8, 2);
+    ctx.fillRect(0.2, 4.2, 1.8, 2);
+    ctx.fillRect(2.4, 4.5, 1.5, 1.8);
+    // Sangue escorrendo da boca
+    ctx.fillStyle = 'rgba(150,10,10,0.9)';
+    ctx.beginPath();
+    ctx.moveTo(1, 7);
+    ctx.lineTo(0, 9.5);
+    ctx.lineTo(2, 9);
+    ctx.lineTo(2.5, 11);
+    ctx.lineTo(3.5, 8);
+    ctx.closePath();
+    ctx.fill();
+    
+    ctx.restore();
+    ctx.restore();
+    
+    // Barra de vida
     if (z.vida < z.vidaMax) {
       const w = z.raio * 2;
       ctx.fillStyle = 'rgba(0,0,0,0.75)';
-      ctx.fillRect(-w/2, -z.raio - 10, w, 3.5);
-      ctx.fillStyle = '#e33';
-      ctx.fillRect(-w/2, -z.raio - 10, w * (z.vida / z.vidaMax), 3.5);
+      ctx.fillRect(-w/2, -z.raio - 14, w, 4);
+      const pct = z.vida / z.vidaMax;
+      ctx.fillStyle = pct > 0.5 ? '#3f3' : pct > 0.25 ? '#fa0' : '#f22';
+      ctx.fillRect(-w/2, -z.raio - 14, w * pct, 4);
+      ctx.strokeStyle = '#000';
+      ctx.lineWidth = 1;
+      ctx.strokeRect(-w/2, -z.raio - 14, w, 4);
     }
+    
     ctx.restore();
   }
   
@@ -1314,8 +1482,8 @@
     
     ctx.restore();
     
-    // Mira do mouse (tela)
-    if (!gameOver && rodando && jogadores[0] && jogadores[0].vida > 0) {
+    // Mira
+    if (!gameOver && rodando && !pausado && jogadores[0] && jogadores[0].vida > 0) {
       ctx.strokeStyle = 'rgba(255,80,80,0.9)';
       ctx.lineWidth = 2;
       ctx.beginPath();
@@ -1359,10 +1527,9 @@
       ctx.globalAlpha = 1;
     }
     
-    // Minimapa
     desenharMinimapa();
     
-    // Setas indicadoras se algum jogador está fora da tela
+    // Setas fora da tela
     for (const p of jogadores) {
       if (p.vida <= 0) continue;
       const px = p.x - camera.x;
@@ -1392,29 +1559,20 @@
   function desenharMinimapa() {
     mctx.fillStyle = 'rgba(10,10,10,0.9)';
     mctx.fillRect(0, 0, MW, MH);
-    
     const escalaX = MW / MAPA_W;
     const escalaY = MH / MAPA_H;
-    
-    // Prédios
     mctx.fillStyle = 'rgba(70,80,90,0.7)';
     for (const p of predios) {
       mctx.fillRect(p.x * escalaX, p.y * escalaY, p.w * escalaX, p.h * escalaY);
     }
-    
-    // Zumbis
     mctx.fillStyle = 'rgba(255,50,50,0.9)';
     for (const z of zumbis) {
       mctx.fillRect(z.x * escalaX - 1, z.y * escalaY - 1, 2, 2);
     }
-    
-    // Bônus
     for (const b of bonus) {
       mctx.fillStyle = b.tipo === 'vida' ? '#3f3' : '#6af';
       mctx.fillRect(b.x * escalaX - 1, b.y * escalaY - 1, 2, 2);
     }
-    
-    // Jogadores
     for (const p of jogadores) {
       if (p.vida <= 0) continue;
       mctx.fillStyle = p.id === 1 ? '#6f6' : '#6cf';
@@ -1425,8 +1583,6 @@
       mctx.lineWidth = 1;
       mctx.stroke();
     }
-    
-    // Câmera (viewport)
     mctx.strokeStyle = 'rgba(255,255,255,0.6)';
     mctx.lineWidth = 1.5;
     mctx.strokeRect(camera.x * escalaX, camera.y * escalaY, W * escalaX, H * escalaY);
@@ -1439,10 +1595,17 @@
     if (delta > 100) delta = 100;
     ultimoTempo = tempo;
     acumuladorFixo += delta;
-    while (acumuladorFixo >= DT_FIXO) {
-      if (!gameOver) atualizar(DT_FIXO / 16.67);
-      acumuladorFixo -= DT_FIXO;
+    
+    // Se pausado, não atualiza lógica mas continua desenhando
+    if (!pausado) {
+      while (acumuladorFixo >= DT_FIXO) {
+        if (!gameOver) atualizar(DT_FIXO / 16.67);
+        acumuladorFixo -= DT_FIXO;
+      }
+    } else {
+      acumuladorFixo = 0;
     }
+    
     desenhar();
     atualizarHUD();
     requestAnimationFrame(loop);
@@ -1456,9 +1619,21 @@
     const k = e.key.toLowerCase();
     teclas[k] = true;
     if (['arrowup','arrowdown','arrowleft','arrowright',' '].includes(k)) e.preventDefault();
-    if (k === 'r' && rodando) iniciarJogo(doisJogadores);
     
-    if ((k === ' ' || k === 'enter') && rodando && !gameOver && doisJogadores) {
+    // Reiniciar
+    if (k === 'r' && rodando) {
+      iniciarJogo(doisJogadores);
+      return;
+    }
+    
+    // Pausar / continuar com P ou Escape
+    if ((k === 'p' || k === 'escape') && rodando && !gameOver) {
+      togglePausa();
+      return;
+    }
+    
+    // P2 atira
+    if ((k === ' ' || k === 'enter') && rodando && !gameOver && !pausado && doisJogadores) {
       const p2 = jogadores[1];
       if (p2 && p2.vida > 0) {
         atirar(p2);
@@ -1479,7 +1654,7 @@
   });
   
   canvas.addEventListener('mousedown', e => {
-    if (e.button === 0 && rodando && !gameOver) {
+    if (e.button === 0 && rodando && !gameOver && !pausado) {
       const p1 = jogadores[0];
       if (p1 && p1.vida > 0) {
         mouse.down = true;
@@ -1498,7 +1673,7 @@
     const p1 = jogadores[0];
     if (!p1) return;
     tiroAutoId1 = setTimeout(function tick() {
-      if (!mouse.down || !rodando || gameOver) return;
+      if (!mouse.down || !rodando || gameOver || pausado) return;
       const p = jogadores[0];
       if (p && p.vida > 0) {
         atirar(p);
@@ -1517,7 +1692,7 @@
     if (!p2) return;
     tiroAutoId2 = setTimeout(function tick() {
       if (!teclas[' '] && !teclas['enter']) return;
-      if (!rodando || gameOver) return;
+      if (!rodando || gameOver || pausado) return;
       const p = jogadores[1];
       if (p && p.vida > 0) {
         atirar(p);
@@ -1528,6 +1703,25 @@
   function pararTiroAutoP2() {
     if (tiroAutoId2) { clearTimeout(tiroAutoId2); tiroAutoId2 = null; }
   }
+  
+  // ===== Pausa =====
+  function togglePausa() {
+    if (!rodando || gameOver) return;
+    pausado = !pausado;
+    if (pausado) {
+      pauseOverlay.classList.remove('oculto');
+      pararTiroAutoP1();
+      pararTiroAutoP2();
+    } else {
+      pauseOverlay.classList.add('oculto');
+      // Reset do timing para não dar "salto" ao despausar
+      ultimoTempo = performance.now();
+      acumuladorFixo = 0;
+    }
+  }
+  
+  btnPausarTop.addEventListener('click', togglePausa);
+  btnContinuar.addEventListener('click', togglePausa);
   
   function atualizarHUD() {
     const p1 = jogadores[0];
@@ -1553,6 +1747,8 @@
   // ===== Início/Fim =====
   function iniciarJogo(modo2p) {
     doisJogadores = !!modo2p;
+    pausado = false;
+    pauseOverlay.classList.add('oculto');
     
     const spawnX = MAPA_W / 2;
     const spawnY = MAPA_H / 2;
@@ -1601,6 +1797,8 @@
   function finalizarJogo() {
     gameOver = true;
     rodando = false;
+    pausado = false;
+    pauseOverlay.classList.add('oculto');
     pararTiroAutoP1();
     pararTiroAutoP2();
     overlay.classList.remove('oculto');
@@ -1630,7 +1828,6 @@
     if (rodando || gameOver) iniciarJogo(doisJogadores);
   });
   
-  // Render inicial
   gerarCidade();
   gerarTexturaChao();
   desenharCidade();
