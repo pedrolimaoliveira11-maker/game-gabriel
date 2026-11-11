@@ -1,1 +1,2 @@
-
+mouse.x = mouseScreen.x + camera.x;
+mouse.y = mouseScreen.y + camera.y;
