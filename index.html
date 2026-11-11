@@ -46,6 +46,7 @@
     border-radius: 4px;
     overflow: hidden;
     margin-top: 4px;
+    position: relative;
   }
   #barraVida {
     height: 100%;
@@ -56,14 +57,17 @@
   #barraEscudo {
     height: 100%;
     width: 0%;
-    background: linear-gradient(90deg, #38f, #6cf);
+    background: linear-gradient(90deg, #36f, #6af);
     transition: width 0.1s linear;
+    position: absolute;
+    top: 0;
+    left: 0;
   }
   #armaInfo {
     color: #ffd44d;
     font-size: 15px;
   }
-  #escudoInfo { color: #6cf; font-size: 14px; }
+  #escudoTxt { color: #6af; }
   
   #overlay {
     position: absolute;
@@ -126,7 +130,7 @@
     left: 50%;
     transform: translate(-50%, -50%);
     color: #ffd44d;
-    font-size: 32px;
+    font-size: 30px;
     font-weight: bold;
     text-shadow: 0 0 20px #f80, 2px 2px 4px #000;
     z-index: 15;
@@ -134,19 +138,6 @@
     opacity: 0;
     transition: opacity 0.3s;
     text-align: center;
-  }
-  #avisoBonus {
-    position: absolute;
-    top: 65%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    font-size: 22px;
-    font-weight: bold;
-    z-index: 15;
-    pointer-events: none;
-    opacity: 0;
-    transition: opacity 0.3s;
-    text-shadow: 2px 2px 4px #000;
   }
 </style>
 </head>
@@ -157,16 +148,17 @@
   
   <div id="hud">
     <div>❤ Vida: <span id="vidaTxt">100</span></div>
-    <div class="barra"><div id="barraVida"></div></div>
-    <div id="escudoInfo">🛡 Escudo: <span id="escudoTxt">0</span></div>
-    <div class="barra"><div id="barraEscudo"></div></div>
+    <div class="barra">
+      <div id="barraVida"></div>
+      <div id="barraEscudo"></div>
+    </div>
+    <div id="escudoTxt">🛡 Escudo: <span id="escudoValTxt">0</span></div>
     <div>💀 Mortos: <span id="mortosTxt">0</span></div>
     <div>🌊 Onda: <span id="ondaTxt">1</span></div>
     <div id="armaInfo">🔫 <span id="armaTxt">Pistola (Nv.1)</span></div>
   </div>
   
   <div id="avisoNivel"></div>
-  <div id="avisoBonus"></div>
   <div id="miraAviso">Clique para atirar</div>
   
   <div id="overlay">
@@ -176,7 +168,7 @@
     <p>⌨️ WASD ou setas para mover</p>
     <p style="color:#ffd44d; margin-top:15px;">🔫 Arma evolui a cada 20 zumbis mortos</p>
     <p style="color:#ff6666;">🧟 Zumbis ficam mais fortes a cada 30 mortos</p>
-    <p style="color:#6cf;">💊 Zumbis podem dropar bônus (vida, escudo, velocidade)</p>
+    <p style="color:#3f6; ">💚 Vida e 🛡 escudo dropam de zumbis mortos</p>
     <button id="btnIniciar">INICIAR JOGO</button>
   </div>
 </div>
@@ -192,16 +184,15 @@
   
   // ===== HUD =====
   const elVida = document.getElementById('vidaTxt');
-  const elBarra = document.getElementById('barraVida');
-  const elEscudo = document.getElementById('escudoTxt');
+  const elBarraVida = document.getElementById('barraVida');
   const elBarraEscudo = document.getElementById('barraEscudo');
+  const elEscudoVal = document.getElementById('escudoValTxt');
   const elMortos = document.getElementById('mortosTxt');
   const elOnda = document.getElementById('ondaTxt');
   const elArma = document.getElementById('armaTxt');
   const overlay = document.getElementById('overlay');
   const btnIniciar = document.getElementById('btnIniciar');
   const elAvisoNivel = document.getElementById('avisoNivel');
-  const elAvisoBonus = document.getElementById('avisoBonus');
   
   // ===== Estado =====
   let rodando = false;
@@ -214,22 +205,19 @@
     x: W/2, y: H/2,
     raio: 16,
     vel: 3.4,
-    velBase: 3.4,
     vida: 100,
     vidaMax: 100,
     escudo: 0,
     escudoMax: 100,
     angulo: 0,
     invulneravel: 0,
-    passoAnim: 0,
-    tempoBonusVel: 0
+    passoAnim: 0
   };
   
   let zumbis = [];
   let tiros = [];
   let particulas = [];
-  let bonusNoChao = [];
-  let textosFlutuantes = [];
+  let bonus = [];
   let mortos = 0;
   let onda = 1;
   let zumbisParaOnda = 0;
@@ -239,19 +227,18 @@
   
   // ===== Sistema de armas =====
   const ARMAS = [
-    { nome: 'Pistola',          dano: 34, cadencia: 130, velTiro: 14, raio: 3,   cor: '#ffd44d', multi: 1, spread: 0,    forma: 'pistola'   },
-    { nome: 'Pistola Dupla',    dano: 38, cadencia: 115, velTiro: 15, raio: 3,   cor: '#ffcc33', multi: 1, spread: 0.05, forma: 'dupla'     },
-    { nome: 'SMG',              dano: 30, cadencia: 80,  velTiro: 16, raio: 3,   cor: '#ffb347', multi: 1, spread: 0.08, forma: 'smg'       },
-    { nome: 'Rifle',            dano: 55, cadencia: 90,  velTiro: 18, raio: 4,   cor: '#ff9a33', multi: 1, spread: 0.03, forma: 'rifle'     },
-    { nome: 'Escopeta',         dano: 40, cadencia: 180, velTiro: 15, raio: 3,   cor: '#ff8844', multi: 3, spread: 0.18, forma: 'escopeta'  },
-    { nome: 'Rifle de Assalto', dano: 65, cadencia: 70,  velTiro: 19, raio: 4,   cor: '#ff7044', multi: 1, spread: 0.05, forma: 'assalto'   },
-    { nome: 'Metralhadora',     dano: 50, cadencia: 55,  velTiro: 20, raio: 3.5, cor: '#ff5533', multi: 1, spread: 0.1,  forma: 'metralha'  },
-    { nome: 'Lança-Chamas',     dano: 30, cadencia: 40,  velTiro: 13, raio: 5,   cor: '#ff3322', multi: 1, spread: 0.25, forma: 'chamas'    },
-    { nome: 'Canhão de Plasma', dano: 90, cadencia: 110, velTiro: 22, raio: 5,   cor: '#aa55ff', multi: 2, spread: 0.08, forma: 'plasma'    },
-    { nome: 'Arma Suprema',     dano: 120,cadencia: 60,  velTiro: 24, raio: 6,   cor: '#ff00ff', multi: 2, spread: 0.12, forma: 'suprema'   }
+    { nome: 'Pistola',         dano: 34,  cadencia: 130, velTiro: 14, raio: 3,   cor: '#ffd44d', multi: 1, spread: 0,    forma: 'pistola' },
+    { nome: 'Pistola Dupla',   dano: 38,  cadencia: 115, velTiro: 15, raio: 3,   cor: '#ffcc33', multi: 1, spread: 0.05, forma: 'dupla' },
+    { nome: 'SMG',             dano: 30,  cadencia: 80,  velTiro: 16, raio: 3,   cor: '#ffb347', multi: 1, spread: 0.08, forma: 'smg' },
+    { nome: 'Rifle',           dano: 55,  cadencia: 90,  velTiro: 18, raio: 4,   cor: '#ff9a33', multi: 1, spread: 0.03, forma: 'rifle' },
+    { nome: 'Escopeta',        dano: 40,  cadencia: 180, velTiro: 15, raio: 3,   cor: '#ff8844', multi: 3, spread: 0.18, forma: 'escopeta' },
+    { nome: 'Rifle de Assalto',dano: 65,  cadencia: 70,  velTiro: 19, raio: 4,   cor: '#ff7044', multi: 1, spread: 0.05, forma: 'assalto' },
+    { nome: 'Metralhadora',    dano: 50,  cadencia: 55,  velTiro: 20, raio: 3.5, cor: '#ff5533', multi: 1, spread: 0.1,  forma: 'metralhadora' },
+    { nome: 'Lança-Chamas',    dano: 30,  cadencia: 40,  velTiro: 13, raio: 5,   cor: '#ff3322', multi: 1, spread: 0.25, forma: 'chamas' },
+    { nome: 'Canhão de Plasma',dano: 90,  cadencia: 110, velTiro: 22, raio: 5,   cor: '#aa55ff', multi: 2, spread: 0.08, forma: 'plasma' },
+    { nome: 'Arma Suprema',    dano: 120, cadencia: 60,  velTiro: 24, raio: 6,   cor: '#ff00ff', multi: 2, spread: 0.12, forma: 'suprema' }
   ];
   let nivelArma = 0;
-  let flashArma = 0; // flash visual ao trocar de arma
   
   function armaAtual() { return ARMAS[Math.min(nivelArma, ARMAS.length - 1)]; }
   
@@ -318,7 +305,7 @@
     }
   }
   
-  // ===== Spawn =====
+  // ===== Spawn de zumbis =====
   function iniciarOnda() {
     zumbisParaOnda = 4 + onda * 2;
     zumbisSpawnados = 0;
@@ -353,55 +340,10 @@
     zumbisSpawnados++;
   }
   
-  // ===== Bônus / Power-ups =====
-  const TIPOS_BONUS = {
-    vida:    { cor: '#e44', icone: '❤', nome: 'Vida +25',     duracao: 0 },
-    escudo:  { cor: '#4af', icone: '🛡', nome: 'Escudo +50',  duracao: 0 },
-    velocidade: { cor: '#5e5', icone: '⚡', nome: 'Velocidade!', duracao: 360 },
-    dano:    { cor: '#fa4', icone: '💥', nome: 'Dano x2!',     duracao: 300 }
-  };
-  
-  function tentarDroparBonus(x, y) {
-    // chance ~18% de dropar algum bônus
-    if (Math.random() > 0.18) return;
-    
-    // sorteia o tipo
-    const r = Math.random();
-    let tipo;
-    if (r < 0.40) tipo = 'vida';
-    else if (r < 0.70) tipo = 'escudo';
-    else if (r < 0.88) tipo = 'velocidade';
-    else tipo = 'dano';
-    
-    bonusNoChao.push({
-      x, y,
-      raio: 12,
-      tipo,
-      vida: 480, // 8s para pegar
-      vidaMax: 480,
-      bob: Math.random() * Math.PI * 2
-    });
-  }
-  
-  function coletarBonus(b) {
-    const info = TIPOS_BONUS[b.tipo];
-    if (b.tipo === 'vida') {
-      player.vida = Math.min(player.vidaMax, player.vida + 25);
-    } else if (b.tipo === 'escudo') {
-      player.escudo = Math.min(player.escudoMax, player.escudo + 50);
-    } else if (b.tipo === 'velocidade') {
-      player.tempoBonusVel = info.duracao;
-    } else if (b.tipo === 'dano') {
-      player.tempoBonusDano = info.duracao;
-    }
-    mostrarAvisoBonus(info.icone + ' ' + info.nome, info.cor);
-  }
-  
   // ===== Tiro =====
   function atirar() {
     const arma = armaAtual();
     const anguloBase = Math.atan2(mouse.y - player.y, mouse.x - player.x);
-    const multDano = (player.tempoBonusDano > 0) ? 2 : 1;
     
     for (let k = 0; k < arma.multi; k++) {
       const ang = anguloBase + (Math.random() - 0.5) * arma.spread * 2;
@@ -412,8 +354,8 @@
         vy: Math.sin(ang) * arma.velTiro,
         vida: 55,
         raio: arma.raio,
-        dano: arma.dano * multDano,
-        cor: multDano > 1 ? '#ff66ff' : arma.cor
+        dano: arma.dano,
+        cor: arma.cor
       });
     }
     
@@ -447,27 +389,44 @@
     }
   }
   
-  function criarTexto(x, y, texto, cor) {
-    textosFlutuantes.push({
-      x, y, texto, cor,
-      vida: 60, vidaMax: 60,
-      vy: -1.2
+  // ===== Drop de bônus =====
+  function droparBonus(x, y) {
+    // 18% chance de vida, 12% chance de escudo
+    const r = Math.random();
+    let tipo = null;
+    if (r < 0.18) tipo = 'vida';
+    else if (r < 0.30) tipo = 'escudo';
+    if (!tipo) return;
+    
+    bonus.push({
+      x, y,
+      raio: 12,
+      tipo,
+      vida: 480,      // ~8 segundos a 60fps
+      vidaMax: 480,
+      bob: Math.random() * Math.PI * 2,
+      coletado: false
     });
   }
   
-  // ===== Avisos =====
+  function coletarBonus(b) {
+    if (b.tipo === 'vida') {
+      player.vida = Math.min(player.vidaMax, player.vida + 25);
+      criarSangue(b.x, b.y, '#3f3', 8);
+      mostrarAviso('💚 +25 Vida');
+    } else if (b.tipo === 'escudo') {
+      player.escudo = Math.min(player.escudoMax, player.escudo + 30);
+      criarSangue(b.x, b.y, '#36f', 8);
+      mostrarAviso('🛡 +30 Escudo');
+    }
+  }
+  
+  // ===== Aviso visual =====
   let avisoTimer = 0;
-  let avisoBonusTimer = 0;
   function mostrarAviso(texto) {
     elAvisoNivel.textContent = texto;
     elAvisoNivel.style.opacity = '1';
-    avisoTimer = 110;
-  }
-  function mostrarAvisoBonus(texto, cor) {
-    elAvisoBonus.textContent = texto;
-    elAvisoBonus.style.color = cor;
-    elAvisoBonus.style.opacity = '1';
-    avisoBonusTimer = 80;
+    avisoTimer = 90;
   }
   
   // ===== Atualização =====
@@ -478,20 +437,6 @@
       avisoTimer -= dt;
       if (avisoTimer <= 0) elAvisoNivel.style.opacity = '0';
     }
-    if (avisoBonusTimer > 0) {
-      avisoBonusTimer -= dt;
-      if (avisoBonusTimer <= 0) elAvisoBonus.style.opacity = '0';
-    }
-    if (flashArma > 0) flashArma -= dt;
-    
-    // Bônus temporários
-    if (player.tempoBonusVel > 0) {
-      player.tempoBonusVel -= dt;
-      player.vel = player.velBase * 1.6;
-    } else {
-      player.vel = player.velBase;
-    }
-    if (player.tempoBonusDano > 0) player.tempoBonusDano -= dt;
     
     // Movimento
     let dx = 0, dy = 0;
@@ -542,20 +487,16 @@
       if (ddx*ddx + ddy*ddy < (player.raio + z.raio) * (player.raio + z.raio)) {
         if (player.invulneravel <= 0) {
           let dano = z.dano;
-          // escudo absorve primeiro
+          // Escudo absorve primeiro
           if (player.escudo > 0) {
             const absorvido = Math.min(player.escudo, dano);
             player.escudo -= absorvido;
             dano -= absorvido;
-            criarTexto(player.x, player.y - 20, '-' + Math.round(absorvido) + ' 🛡', '#6cf');
           }
-          if (dano > 0) {
-            player.vida -= dano;
-            criarSangue(player.x, player.y, '#f33', 8);
-            criarTexto(player.x, player.y - 20, '-' + Math.round(dano), '#f33');
-          }
-          player.invulneravel = 30;
+          if (dano > 0) player.vida -= dano;
           
+          player.invulneravel = 30;
+          criarSangue(player.x, player.y, player.escudo > 0 ? '#36f' : '#f33', 8);
           if (player.vida <= 0) {
             player.vida = 0;
             finalizarJogo();
@@ -589,19 +530,18 @@
           
           if (z.vida <= 0) {
             criarSangue(z.x, z.y, '#800', 12);
-            tentarDroparBonus(z.x, z.y);
+            // Drop de bônus antes de remover
+            droparBonus(z.x, z.y);
             zumbis.splice(j, 1);
             mortos++;
             
-            // Arma evolui a cada 20 mortos
+            // Evolução da arma a cada 20 mortos
             if (mortos % 20 === 0 && nivelArma < ARMAS.length - 1) {
               nivelArma++;
-              flashArma = 60;
               mostrarAviso('🔫 ' + armaAtual().nome + ' desbloqueada!');
             }
-            // Zumbis mais fortes a cada 30
             if (mortos % 30 === 0) {
-              setTimeout(() => mostrarAviso('🧟 Zumbis mais fortes!'), 900);
+              setTimeout(() => mostrarAviso('🧟 Zumbis mais fortes!'), 800);
             }
           }
           break;
@@ -610,17 +550,18 @@
       if (acertou) tiros.splice(i, 1);
     }
     
-    // Bônus no chão
-    for (let i = bonusNoChao.length - 1; i >= 0; i--) {
-      const b = bonusNoChao[i];
+    // Bônus (movimento flutuante + coleta + expiração)
+    for (let i = bonus.length - 1; i >= 0; i--) {
+      const b = bonus[i];
       b.vida -= dt;
-      b.bob += 0.12 * dt;
-      if (b.vida <= 0) { bonusNoChao.splice(i, 1); continue; }
+      b.bob += dt * 0.12;
+      
+      if (b.vida <= 0) { bonus.splice(i, 1); continue; }
       
       const ddx = player.x - b.x, ddy = player.y - b.y;
       if (ddx*ddx + ddy*ddy < (player.raio + b.raio) * (player.raio + b.raio)) {
         coletarBonus(b);
-        bonusNoChao.splice(i, 1);
+        bonus.splice(i, 1);
       }
     }
     
@@ -633,14 +574,6 @@
       p.vy *= 0.94;
       p.vida -= dt;
       if (p.vida <= 0) particulas.splice(i, 1);
-    }
-    
-    // Textos flutuantes
-    for (let i = textosFlutuantes.length - 1; i >= 0; i--) {
-      const tf = textosFlutuantes[i];
-      tf.y += tf.vy * dt;
-      tf.vida -= dt;
-      if (tf.vida <= 0) textosFlutuantes.splice(i, 1);
     }
   }
   
@@ -672,6 +605,7 @@
       ctx.beginPath();
       ctx.arc(p.x, p.y, 70, 0, Math.PI * 2);
       ctx.fill();
+      
       ctx.fillStyle = '#333';
       ctx.beginPath();
       ctx.arc(p.x, p.y, 4, 0, Math.PI * 2);
@@ -681,8 +615,10 @@
     for (const p of predios) {
       ctx.fillStyle = 'rgba(0,0,0,0.5)';
       ctx.fillRect(p.x + 5, p.y + 5, p.w, p.h);
+      
       ctx.fillStyle = p.cor;
       ctx.fillRect(p.x, p.y, p.w, p.h);
+      
       ctx.strokeStyle = '#000';
       ctx.lineWidth = 2;
       ctx.strokeRect(p.x, p.y, p.w, p.h);
@@ -722,180 +658,6 @@
     }
   }
   
-  // ===== Desenho da arma (varia por nível) =====
-  function desenharArma() {
-    const arma = armaAtual();
-    const r = player.raio;
-    
-    // Braço estendido
-    ctx.fillStyle = '#f0b088';
-    ctx.fillRect(r * 0.35, -2.5, 10, 5);
-    ctx.strokeStyle = '#a06a4a';
-    ctx.lineWidth = 1;
-    ctx.strokeRect(r * 0.35, -2.5, 10, 5);
-    
-    ctx.save();
-    ctx.translate(r * 0.85, 0);
-    
-    // desenha conforme a forma
-    switch (arma.forma) {
-      case 'pistola': {
-        // cano curto
-        ctx.fillStyle = '#2a2a2a';
-        ctx.fillRect(0, -3, 12, 6);
-        ctx.fillStyle = '#555';
-        ctx.fillRect(0, -2, 12, 2);
-        // cabo
-        ctx.fillStyle = '#1a1a1a';
-        ctx.fillRect(-2, 2, 5, 7);
-        break;
-      }
-      case 'dupla': {
-        ctx.fillStyle = '#2a2a2a';
-        ctx.fillRect(0, -5, 12, 4);
-        ctx.fillRect(0, 1, 12, 4);
-        ctx.fillStyle = '#555';
-        ctx.fillRect(0, -4, 12, 1.5);
-        ctx.fillRect(0, 2, 12, 1.5);
-        ctx.fillStyle = '#1a1a1a';
-        ctx.fillRect(-2, 4, 5, 7);
-        break;
-      }
-      case 'smg': {
-        ctx.fillStyle = '#2a2a2a';
-        ctx.fillRect(0, -3, 16, 6);
-        ctx.fillStyle = '#555';
-        ctx.fillRect(0, -2, 16, 1.5);
-        ctx.fillRect(0, 0.5, 16, 1.5);
-        // pente
-        ctx.fillStyle = '#111';
-        ctx.fillRect(2, 3, 5, 8);
-        break;
-      }
-      case 'rifle': {
-        ctx.fillStyle = '#2a2a2a';
-        ctx.fillRect(0, -3, 22, 6);
-        ctx.fillStyle = '#555';
-        ctx.fillRect(0, -2, 22, 1.5);
-        ctx.fillStyle = '#5a3a1a';
-        ctx.fillRect(-2, 2, 6, 6);
-        // mira
-        ctx.fillStyle = '#ff9a33';
-        ctx.fillRect(20, -4, 3, 3);
-        break;
-      }
-      case 'escopeta': {
-        ctx.fillStyle = '#2a2a2a';
-        ctx.fillRect(0, -4, 20, 4);
-        ctx.fillRect(0, 1, 20, 4);
-        ctx.fillStyle = '#5a3a1a';
-        ctx.fillRect(-4, -4, 6, 9);
-        ctx.fillStyle = '#ff8844';
-        ctx.fillRect(18, -3, 4, 2);
-        break;
-      }
-      case 'assalto': {
-        ctx.fillStyle = '#2a2a2a';
-        ctx.fillRect(0, -3, 24, 6);
-        ctx.fillStyle = '#444';
-        ctx.fillRect(6, -4, 4, 8);
-        ctx.fillStyle = '#1a1a1a';
-        ctx.fillRect(2, 3, 5, 8);
-        ctx.fillStyle = '#ff7044';
-        ctx.fillRect(22, -3, 3, 3);
-        break;
-      }
-      case 'metralha': {
-        ctx.fillStyle = '#2a2a2a';
-        ctx.fillRect(0, -4, 26, 8);
-        ctx.fillStyle = '#444';
-        ctx.fillRect(0, -5, 6, 10);
-        // tambor
-        ctx.fillStyle = '#333';
-        ctx.beginPath();
-        ctx.arc(8, 5, 5, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.fillStyle = '#ff5533';
-        ctx.fillRect(24, -3, 3, 3);
-        break;
-      }
-      case 'chamas': {
-        ctx.fillStyle = '#2a2a2a';
-        ctx.fillRect(0, -4, 16, 8);
-        // bocal largo
-        ctx.fillStyle = '#555';
-        ctx.beginPath();
-        ctx.moveTo(16, -5);
-        ctx.lineTo(24, -7);
-        ctx.lineTo(24, 7);
-        ctx.lineTo(16, 5);
-        ctx.closePath();
-        ctx.fill();
-        // tanque
-        ctx.fillStyle = '#6a1a1a';
-        ctx.fillRect(-4, -6, 6, 12);
-        break;
-      }
-      case 'plasma': {
-        ctx.fillStyle = '#2a2a2a';
-        ctx.fillRect(0, -4, 20, 8);
-        // bobina de energia
-        ctx.fillStyle = '#aa55ff';
-        ctx.fillRect(4, -6, 3, 12);
-        ctx.fillRect(10, -6, 3, 12);
-        // núcleo
-        ctx.fillStyle = '#fff';
-        ctx.beginPath();
-        ctx.arc(20, 0, 4, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.fillStyle = '#aa55ff';
-        ctx.beginPath();
-        ctx.arc(20, 0, 5.5, 0, Math.PI * 2);
-        ctx.strokeStyle = '#aa55ff';
-        ctx.lineWidth = 2;
-        ctx.stroke();
-        break;
-      }
-      case 'suprema': {
-        ctx.fillStyle = '#1a1a1a';
-        ctx.fillRect(0, -5, 26, 10);
-        // cristais
-        ctx.fillStyle = '#ff00ff';
-        ctx.fillRect(3, -7, 3, 14);
-        ctx.fillRect(9, -7, 3, 14);
-        ctx.fillRect(15, -7, 3, 14);
-        // núcleo brilhante
-        ctx.fillStyle = '#fff';
-        ctx.beginPath();
-        ctx.arc(26, 0, 5, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.strokeStyle = '#ff00ff';
-        ctx.lineWidth = 2;
-        ctx.stroke();
-        break;
-      }
-    }
-    
-    // brilho colorido no cano
-    ctx.fillStyle = arma.cor;
-    ctx.globalAlpha = 0.7 + Math.sin(tempoJogo * 0.2) * 0.2;
-    const pontaX = arma.forma === 'rifle' ? 22 : arma.forma === 'metralha' ? 26 : arma.forma === 'suprema' ? 26 : arma.forma === 'escopeta' ? 20 : 12;
-    ctx.fillRect(pontaX, -2, 2, 4);
-    ctx.globalAlpha = 1;
-    
-    // flash ao trocar de arma
-    if (flashArma > 0) {
-      ctx.globalAlpha = Math.min(1, flashArma / 30);
-      ctx.fillStyle = '#fff';
-      ctx.beginPath();
-      ctx.arc(pontaX, 0, 12, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.globalAlpha = 1;
-    }
-    
-    ctx.restore();
-  }
-  
   // ===== Personagem humano =====
   function desenharPlayer() {
     const px = player.x, py = player.y;
@@ -905,36 +667,25 @@
     ctx.save();
     ctx.translate(px, py);
     
-    // aura de escudo
-    if (player.escudo > 0) {
-      ctx.strokeStyle = `rgba(100,200,255,${0.4 + Math.sin(tempoJogo * 0.1) * 0.2})`;
-      ctx.lineWidth = 2.5;
-      ctx.beginPath();
-      ctx.arc(0, 0, r + 8, 0, Math.PI * 2);
-      ctx.stroke();
-    }
-    // aura de velocidade
-    if (player.tempoBonusVel > 0) {
-      ctx.strokeStyle = 'rgba(100,255,100,0.5)';
-      ctx.lineWidth = 2;
-      ctx.beginPath();
-      ctx.arc(0, 0, r + 5, 0, Math.PI * 2);
-      ctx.stroke();
-    }
-    // aura de dano
-    if (player.tempoBonusDano > 0) {
-      ctx.strokeStyle = 'rgba(255,150,50,0.6)';
-      ctx.lineWidth = 2;
-      ctx.beginPath();
-      ctx.arc(0, 0, r + 11, 0, Math.PI * 2);
-      ctx.stroke();
-    }
-    
     // Sombra
     ctx.fillStyle = 'rgba(0,0,0,0.45)';
     ctx.beginPath();
     ctx.ellipse(3, r * 0.7, r * 0.95, r * 0.5, 0, 0, Math.PI * 2);
     ctx.fill();
+    
+    // Aura de escudo (desenhada antes do corpo, atrás)
+    if (player.escudo > 0) {
+      const alfa = 0.25 + 0.15 * Math.sin(tempoJogo * 0.15);
+      ctx.strokeStyle = 'rgba(80,160,255,' + alfa + ')';
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.arc(0, 0, r + 8, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.fillStyle = 'rgba(80,160,255,0.08)';
+      ctx.beginPath();
+      ctx.arc(0, 0, r + 8, 0, Math.PI * 2);
+      ctx.fill();
+    }
     
     if (player.invulneravel > 0 && Math.floor(player.invulneravel / 4) % 2 === 0) {
       ctx.globalAlpha = 0.55;
@@ -944,6 +695,8 @@
     ctx.fillStyle = '#1a2a4a';
     ctx.fillRect(-6, 2, 5, r - 2 + anda);
     ctx.fillRect(1, 2, 5, r - 2 - anda);
+    
+    // Sapatos
     ctx.fillStyle = '#111';
     ctx.fillRect(-6, r + anda - 2, 5, 4);
     ctx.fillRect(1, r - anda - 2, 5, 4);
@@ -1018,9 +771,135 @@
     ctx.arc(0, -r * 0.72, 3, 0.1, Math.PI - 0.1);
     ctx.stroke();
     
-    // Arma
+    // ===== Arma (muda conforme nível) =====
     ctx.rotate(player.angulo);
-    desenharArma();
+    const arma = armaAtual();
+    ctx.fillStyle = '#f0b088';
+    ctx.fillRect(r * 0.35, -2, 10, 5);
+    
+    desenharArma(arma, r);
+    
+    ctx.restore();
+  }
+  
+  function desenharArma(arma, r) {
+    const baseX = r * 0.7;
+    const baseY = -2;
+    
+    ctx.save();
+    ctx.translate(baseX, baseY);
+    
+    switch (arma.forma) {
+      case 'pistola':
+        ctx.fillStyle = '#333';
+        ctx.fillRect(0, -2, 14, 5);
+        ctx.fillStyle = '#555';
+        ctx.fillRect(0, -1, 14, 2);
+        break;
+      case 'dupla':
+        ctx.fillStyle = '#333';
+        ctx.fillRect(0, -5, 14, 4);
+        ctx.fillRect(0, 1, 14, 4);
+        ctx.fillStyle = '#666';
+        ctx.fillRect(0, -4, 14, 1);
+        ctx.fillRect(0, 2, 14, 1);
+        break;
+      case 'smg':
+        ctx.fillStyle = '#2a2a2a';
+        ctx.fillRect(0, -3, 18, 6);
+        ctx.fillRect(4, 3, 4, 5);
+        ctx.fillStyle = '#555';
+        ctx.fillRect(0, -2, 18, 1);
+        break;
+      case 'rifle':
+        ctx.fillStyle = '#3a2010';
+        ctx.fillRect(-4, -2, 8, 5); // coronha
+        ctx.fillStyle = '#444';
+        ctx.fillRect(2, -3, 20, 6);
+        ctx.fillStyle = '#666';
+        ctx.fillRect(4, -2, 16, 1);
+        ctx.fillStyle = '#222';
+        ctx.fillRect(8, 3, 4, 4);
+        break;
+      case 'escopeta':
+        ctx.fillStyle = '#3a2010';
+        ctx.fillRect(-4, -2, 8, 5);
+        ctx.fillStyle = '#555';
+        ctx.fillRect(2, -4, 22, 8);
+        ctx.fillStyle = '#333';
+        ctx.fillRect(2, -4, 22, 2);
+        ctx.fillStyle = '#777';
+        ctx.fillRect(2, 0, 22, 1);
+        break;
+      case 'assalto':
+        ctx.fillStyle = '#1a1a1a';
+        ctx.fillRect(-4, -2, 8, 6);
+        ctx.fillRect(4, -3, 22, 6);
+        ctx.fillRect(10, 3, 5, 6);
+        ctx.fillStyle = '#555';
+        ctx.fillRect(4, -2, 22, 1);
+        ctx.fillStyle = '#ff7044';
+        ctx.fillRect(22, -2, 3, 3);
+        break;
+      case 'metralhadora':
+        ctx.fillStyle = '#1a1a1a';
+        ctx.fillRect(-4, -3, 10, 7);
+        ctx.fillStyle = '#333';
+        ctx.fillRect(2, -4, 26, 8);
+        ctx.fillStyle = '#555';
+        ctx.fillRect(6, -3, 20, 1);
+        ctx.fillStyle = '#ff5533';
+        ctx.fillRect(26, -3, 3, 4);
+        // cano giratório
+        ctx.fillStyle = '#222';
+        ctx.fillRect(26, -4, 6, 6);
+        break;
+      case 'chamas':
+        ctx.fillStyle = '#3a2010';
+        ctx.fillRect(-4, -2, 8, 5);
+        ctx.fillStyle = '#4a4a4a';
+        ctx.fillRect(2, -3, 18, 6);
+        ctx.fillStyle = '#ff3322';
+        ctx.beginPath();
+        ctx.arc(20, 0, 4, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = '#ffcc33';
+        ctx.beginPath();
+        ctx.arc(20, 0, 2, 0, Math.PI * 2);
+        ctx.fill();
+        break;
+      case 'plasma':
+        ctx.fillStyle = '#2a1a4a';
+        ctx.fillRect(-4, -3, 8, 6);
+        ctx.fillStyle = '#4a3a6a';
+        ctx.fillRect(4, -4, 22, 8);
+        ctx.fillStyle = '#aa55ff';
+        ctx.fillRect(8, -3, 16, 2);
+        ctx.beginPath();
+        ctx.arc(26, 0, 4, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = '#dd99ff';
+        ctx.beginPath();
+        ctx.arc(26, 0, 2, 0, Math.PI * 2);
+        ctx.fill();
+        break;
+      case 'suprema':
+        ctx.fillStyle = '#1a0a1a';
+        ctx.fillRect(-4, -3, 10, 7);
+        ctx.fillStyle = '#3a1a3a';
+        ctx.fillRect(6, -4, 24, 8);
+        ctx.fillStyle = '#ff00ff';
+        ctx.fillRect(10, -3, 18, 2);
+        ctx.fillRect(10, 1, 18, 2);
+        ctx.beginPath();
+        ctx.arc(30, 0, 5, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = '#fff';
+        ctx.beginPath();
+        ctx.arc(30, 0, 2.5, 0, Math.PI * 2);
+        ctx.fill();
+        break;
+    }
     
     ctx.restore();
   }
@@ -1079,46 +958,63 @@
     ctx.restore();
   }
   
+  // ===== Desenhar bônus =====
   function desenharBonus(b) {
-    const info = TIPOS_BONUS[b.tipo];
-    const bobY = Math.sin(b.bob) * 4;
-    const pulsar = 1 + Math.sin(tempoJogo * 0.15) * 0.1;
-    const alpha = b.vida < 120 ? (Math.sin(b.vida * 0.3) * 0.5 + 0.5) : 1;
+    const bobY = Math.sin(b.bob) * 3;
+    const pulso = 1 + Math.sin(b.bob * 2) * 0.08;
+    const alfa = b.vida < 120 ? (Math.floor(b.vida / 8) % 2 === 0 ? 0.35 : 1) : 1;
     
     ctx.save();
+    ctx.globalAlpha = alfa;
     ctx.translate(b.x, b.y + bobY);
-    ctx.globalAlpha = alpha;
     
-    // sombra
-    ctx.fillStyle = 'rgba(0,0,0,0.4)';
-    ctx.beginPath();
-    ctx.ellipse(0, 10 - bobY, 10, 4, 0, 0, Math.PI * 2);
-    ctx.fill();
-    
-    // aura brilhante
-    const grad = ctx.createRadialGradient(0, 0, 3, 0, 0, 22 * pulsar);
-    grad.addColorStop(0, info.cor + 'cc');
-    grad.addColorStop(1, info.cor + '00');
+    // halo
+    const corHalo = b.tipo === 'vida' ? 'rgba(60,255,60,' : 'rgba(60,140,255,';
+    const grad = ctx.createRadialGradient(0, 0, 2, 0, 0, 24);
+    grad.addColorStop(0, corHalo + '0.4)');
+    grad.addColorStop(1, corHalo + '0)');
     ctx.fillStyle = grad;
     ctx.beginPath();
-    ctx.arc(0, 0, 22 * pulsar, 0, Math.PI * 2);
+    ctx.arc(0, 0, 24, 0, Math.PI * 2);
     ctx.fill();
     
-    // corpo do bônus (caixa)
-    ctx.fillStyle = info.cor;
-    ctx.beginPath();
-    ctx.roundRect(-11, -11, 22, 22, 5);
-    ctx.fill();
-    ctx.strokeStyle = '#fff';
-    ctx.lineWidth = 2;
-    ctx.stroke();
-    
-    // ícone
-    ctx.fillStyle = '#fff';
-    ctx.font = 'bold 15px Arial';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillText(info.icone, 0, 1);
+    // corpo
+    ctx.scale(pulso, pulso);
+    if (b.tipo === 'vida') {
+      ctx.fillStyle = '#2a6a2a';
+      ctx.beginPath();
+      ctx.arc(0, 0, b.raio, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = '#8f8';
+      ctx.lineWidth = 2;
+      ctx.stroke();
+      // cruz
+      ctx.fillStyle = '#fff';
+      ctx.fillRect(-2, -7, 4, 14);
+      ctx.fillRect(-7, -2, 14, 4);
+    } else {
+      ctx.fillStyle = '#2a3a6a';
+      ctx.beginPath();
+      ctx.arc(0, 0, b.raio, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = '#6af';
+      ctx.lineWidth = 2;
+      ctx.stroke();
+      // escudo
+      ctx.fillStyle = '#9cf';
+      ctx.beginPath();
+      ctx.moveTo(0, -7);
+      ctx.lineTo(7, -4);
+      ctx.lineTo(7, 2);
+      ctx.lineTo(0, 7);
+      ctx.lineTo(-7, 2);
+      ctx.lineTo(-7, -4);
+      ctx.closePath();
+      ctx.fill();
+      ctx.strokeStyle = '#fff';
+      ctx.lineWidth = 1;
+      ctx.stroke();
+    }
     
     ctx.restore();
   }
@@ -1126,7 +1022,9 @@
   function desenhar() {
     desenharCidade();
     
-    // partículas
+    // Bônus ficam no chão, atrás dos personagens
+    for (const b of bonus) desenharBonus(b);
+    
     for (const p of particulas) {
       ctx.globalAlpha = p.vida / p.vidaMax;
       ctx.fillStyle = p.cor;
@@ -1136,13 +1034,8 @@
     }
     ctx.globalAlpha = 1;
     
-    // bônus no chão
-    for (const b of bonusNoChao) desenharBonus(b);
-    
-    // zumbis
     for (const z of zumbis) desenharZumbi(z);
     
-    // tiros
     for (const t of tiros) {
       ctx.strokeStyle = t.cor;
       ctx.globalAlpha = 0.5;
@@ -1152,6 +1045,7 @@
       ctx.lineTo(t.x - t.vx * 1.2, t.y - t.vy * 1.2);
       ctx.stroke();
       ctx.globalAlpha = 1;
+      
       ctx.fillStyle = t.cor;
       ctx.beginPath();
       ctx.arc(t.x, t.y, t.raio, 0, Math.PI * 2);
@@ -1164,20 +1058,6 @@
     
     desenharPlayer();
     
-    // textos flutuantes
-    ctx.textAlign = 'center';
-    ctx.font = 'bold 14px Arial';
-    for (const tf of textosFlutuantes) {
-      ctx.globalAlpha = tf.vida / tf.vidaMax;
-      ctx.fillStyle = tf.cor;
-      ctx.strokeStyle = '#000';
-      ctx.lineWidth = 3;
-      ctx.strokeText(tf.texto, tf.x, tf.y);
-      ctx.fillText(tf.texto, tf.x, tf.y);
-    }
-    ctx.globalAlpha = 1;
-    
-    // mira
     if (!gameOver) {
       ctx.strokeStyle = 'rgba(255,80,80,0.85)';
       ctx.lineWidth = 2;
@@ -1200,6 +1080,7 @@
   // ===== Loop =====
   function loop(tempo) {
     if (!rodando) return;
+    
     let delta = tempo - ultimoTempo;
     if (delta > 100) delta = 100;
     ultimoTempo = tempo;
@@ -1209,7 +1090,9 @@
       if (!gameOver) atualizar(DT_FIXO / 16.67);
       acumuladorFixo -= DT_FIXO;
     }
+    
     desenhar();
+    atualizarHUD();
     requestAnimationFrame(loop);
   }
   
@@ -1222,7 +1105,9 @@
     teclas[k] = true;
     if (['arrowup','arrowdown','arrowleft','arrowright',' '].includes(k)) e.preventDefault();
   });
-  window.addEventListener('keyup', e => { teclas[e.key.toLowerCase()] = false; });
+  window.addEventListener('keyup', e => {
+    teclas[e.key.toLowerCase()] = false;
+  });
   
   canvas.addEventListener('mousemove', e => {
     const r = canvas.getBoundingClientRect();
@@ -1244,11 +1129,13 @@
   let tiroAutoId = null;
   function iniciarTiroAuto() {
     pararTiroAuto();
+    const cad = armaAtual().cadencia;
     tiroAutoId = setTimeout(function tick() {
       if (!mouse.down || !rodando || gameOver) return;
       atirar();
-      tiroAutoId = setTimeout(tick, armaAtual().cadencia);
-    }, armaAtual().cadencia);
+      const novaCad = armaAtual().cadencia;
+      tiroAutoId = setTimeout(tick, novaCad);
+    }, cad);
   }
   function pararTiroAuto() {
     if (tiroAutoId) { clearTimeout(tiroAutoId); tiroAutoId = null; }
@@ -1257,9 +1144,9 @@
   // ===== HUD =====
   function atualizarHUD() {
     elVida.textContent = Math.ceil(player.vida);
-    elBarra.style.width = (player.vida / player.vidaMax * 100) + '%';
-    elEscudo.textContent = Math.ceil(player.escudo);
+    elBarraVida.style.width = (player.vida / player.vidaMax * 100) + '%';
     elBarraEscudo.style.width = (player.escudo / player.escudoMax * 100) + '%';
+    elEscudoVal.textContent = Math.ceil(player.escudo);
     elMortos.textContent = mortos;
     elOnda.textContent = onda;
     elArma.textContent = armaAtual().nome + ' (Nv.' + (nivelArma + 1) + ')';
@@ -1273,15 +1160,11 @@
     player.escudo = 0;
     player.invulneravel = 0;
     player.passoAnim = 0;
-    player.tempoBonusVel = 0;
-    player.tempoBonusDano = 0;
-    player.vel = player.velBase;
     
     zumbis = [];
     tiros = [];
     particulas = [];
-    bonusNoChao = [];
-    textosFlutuantes = [];
+    bonus = [];
     mortos = 0;
     onda = 1;
     zumbisParaOnda = 0;
@@ -1289,13 +1172,11 @@
     tempoSpawn = 0;
     tempoJogo = 0;
     nivelArma = 0;
-    flashArma = 0;
     gameOver = false;
     acumuladorFixo = 0;
     avisoTimer = 0;
-    avisoBonusTimer = 0;
     elAvisoNivel.style.opacity = '0';
-    elAvisoBonus.style.opacity = '0';
+    pararTiroAuto();
     
     gerarCidade();
     iniciarOnda();
@@ -1324,7 +1205,7 @@
   
   btnIniciar.addEventListener('click', iniciarJogo);
   
-  // Render inicial
+  // Render inicial (fundo estático)
   gerarCidade();
   desenharCidade();
 })();
