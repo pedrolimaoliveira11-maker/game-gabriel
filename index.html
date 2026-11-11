@@ -1,657 +1,790 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Corrida na Cidade</title>
-  <style>
-    :root {
-      --sky-top: #0b1026;
-      --sky-mid: #1b2250;
-      --sky-bot: #3a2a5c;
-      --road: #2a2d33;
-      --lane: #f4e27a;
-      --neon: #5eead4;
-      --gold: #fbbf24;
-    }
-
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-
-    body {
-      min-height: 100vh;
-      font-family: "Trebuchet MS", "Segoe UI", sans-serif;
-      color: #f8fafc;
-      background: radial-gradient(ellipse at top, #1e1b4b 0%, #020617 70%);
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      padding: 16px;
-    }
-
-    h1 {
-      font-size: clamp(1.4rem, 3vw, 2.2rem);
-      letter-spacing: 2px;
-      text-transform: uppercase;
-      background: linear-gradient(90deg, #67e8f9, #c4b5fd, #fde68a);
-      -webkit-background-clip: text;
-      background-clip: text;
-      color: transparent;
-      margin-bottom: 4px;
-    }
-
-    .subtitle {
-      color: #94a3b8;
-      margin-bottom: 14px;
-      font-size: 0.95rem;
-    }
-
-    .hud {
-      width: min(980px, 100%);
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      gap: 12px;
-      margin-bottom: 12px;
-      flex-wrap: wrap;
-    }
-
-    .coins {
-      background: linear-gradient(180deg, #1e293b, #0f172a);
-      border: 1px solid #334155;
-      border-radius: 12px;
-      padding: 10px 16px;
-      font-size: 1.15rem;
-      box-shadow: 0 0 20px rgba(251, 191, 36, 0.15);
-    }
-
-    .coins span { color: var(--gold); font-weight: 700; }
-
-    .panel {
-      width: min(980px, 100%);
-      background: rgba(15, 23, 42, 0.75);
-      border: 1px solid #334155;
-      border-radius: 16px;
-      padding: 14px;
-      margin-bottom: 12px;
-      backdrop-filter: blur(8px);
-    }
-
-    .row {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 10px;
-      align-items: center;
-      justify-content: center;
-    }
-
-    .label {
-      width: 100%;
-      text-align: center;
-      color: #cbd5e1;
-      font-size: 0.9rem;
-      margin-bottom: 6px;
-    }
-
-    .car-btn {
-      border: 2px solid #475569;
-      background: #0f172a;
-      color: #fff;
-      border-radius: 12px;
-      padding: 8px 12px 10px;
-      cursor: pointer;
-      min-width: 120px;
-      transition: transform .15s, box-shadow .15s, border-color .15s;
-    }
-
-    .car-btn:hover { transform: translateY(-2px); }
-
-    .car-btn.selected {
-      border-color: #fff;
-      box-shadow: 0 0 16px currentColor;
-    }
-
-    .car-btn .swatch {
-      height: 18px;
-      border-radius: 6px;
-      margin-bottom: 6px;
-    }
-
-    .bet-btn {
-      border: 1px solid #64748b;
-      background: #1e293b;
-      color: #e2e8f0;
-      border-radius: 999px;
-      padding: 8px 14px;
-      cursor: pointer;
-      font-weight: 700;
-    }
-
-    .bet-btn.selected {
-      background: #fbbf24;
-      color: #111827;
-      border-color: #f59e0b;
-    }
-
-    .go {
-      margin-top: 10px;
-      width: 100%;
-      max-width: 280px;
-      display: block;
-      margin-left: auto;
-      margin-right: auto;
-      padding: 12px 18px;
-      font-size: 1.05rem;
-      font-weight: 800;
-      letter-spacing: 1px;
-      text-transform: uppercase;
-      border: none;
-      border-radius: 12px;
-      cursor: pointer;
-      color: #042f2e;
-      background: linear-gradient(90deg, #5eead4, #67e8f9);
-      box-shadow: 0 8px 24px rgba(94, 234, 212, 0.25);
-    }
-
-    .go:disabled {
-      opacity: 0.45;
-      cursor: not-allowed;
-      box-shadow: none;
-    }
-
-    .scene-wrap {
-      width: min(980px, 100%);
-      position: relative;
-      border-radius: 16px;
-      overflow: hidden;
-      border: 2px solid #1e293b;
-      box-shadow: 0 20px 50px rgba(0,0,0,.45), 0 0 40px rgba(99,102,241,.15);
-    }
-
-    .scene {
-      position: relative;
-      height: 420px;
-      background: linear-gradient(to bottom, var(--sky-top) 0%, var(--sky-mid) 38%, var(--sky-bot) 58%, #1a1030 58%);
-      overflow: hidden;
-    }
-
-    .stars, .stars::after {
-      position: absolute;
-      inset: 0 0 45% 0;
-      background-image:
-        radial-gradient(1px 1px at 10% 20%, #fff 50%, transparent 51%),
-        radial-gradient(1px 1px at 30% 40%, #fff 50%, transparent 51%),
-        radial-gradient(1.5px 1.5px at 55% 15%, #fff 50%, transparent 51%),
-        radial-gradient(1px 1px at 70% 35%, #fff 50%, transparent 51%),
-        radial-gradient(1px 1px at 85% 22%, #fff 50%, transparent 51%),
-        radial-gradient(1.5px 1.5px at 92% 48%, #fff 50%, transparent 51%),
-        radial-gradient(1px 1px at 18% 55%, #c7d2fe 50%, transparent 51%);
-      opacity: 0.7;
-      pointer-events: none;
-    }
-
-    .moon {
-      position: absolute;
-      top: 28px;
-      right: 70px;
-      width: 54px;
-      height: 54px;
-      border-radius: 50%;
-      background: radial-gradient(circle at 35% 35%, #fff7d6, #fde68a 60%, #f59e0b);
-      box-shadow: 0 0 30px rgba(253, 230, 138, 0.55);
-    }
-
-    #buildings {
-      position: absolute;
-      left: 0; right: 0;
-      bottom: 148px;
-      height: 210px;
-      pointer-events: none;
-    }
-
-    .building {
-      position: absolute;
-      bottom: 0;
-      background: linear-gradient(180deg, #0b1220, #111827);
-      box-shadow: inset 0 0 0 1px rgba(255,255,255,0.04);
-    }
-
-    .building::after {
-      content: "";
-      position: absolute;
-      inset: 8px 6px;
-      background-image:
-        repeating-linear-gradient(
-          to bottom,
-          transparent 0 9px,
-          rgba(0,0,0,0.25) 9px 11px
-        ),
-        repeating-linear-gradient(
-          to right,
-          transparent 0 8px,
-          rgba(0,0,0,0.2) 8px 10px
-        );
-      background-color: transparent;
-      opacity: 1;
-      box-shadow:
-        12px 14px 0 0 rgba(253, 224, 71, 0.35),
-        28px 14px 0 0 rgba(125, 211, 252, 0.28),
-        12px 32px 0 0 rgba(253, 224, 71, 0.18),
-        28px 32px 0 0 rgba(167, 139, 250, 0.28),
-        12px 50px 0 0 rgba(125, 211, 252, 0.2),
-        28px 50px 0 0 rgba(253, 224, 71, 0.22),
-        44px 14px 0 0 rgba(253, 224, 71, 0.15),
-        44px 32px 0 0 rgba(125, 211, 252, 0.22),
-        44px 50px 0 0 rgba(253, 224, 71, 0.12);
-    }
-
-    .neon-sign {
-      position: absolute;
-      font-size: 11px;
-      letter-spacing: 1px;
-      color: #67e8f9;
-      text-shadow: 0 0 8px #22d3ee;
-      top: 8px;
-      left: 50%;
-      transform: translateX(-50%);
-      white-space: nowrap;
-    }
-
-    .road {
-      position: absolute;
-      left: 0; right: 0; bottom: 0;
-      height: 148px;
-      background:
-        linear-gradient(to bottom, #3f3f46 0 8px, transparent 8px),
-        repeating-linear-gradient(90deg, #3f3f46 0 18px, #52525b 18px 36px),
-        linear-gradient(#27272a, #18181b);
-    }
-
-    .sidewalk {
-      position: absolute;
-      left: 0; right: 0; bottom: 148px;
-      height: 16px;
-      background: repeating-linear-gradient(90deg, #64748b 0 28px, #94a3b8 28px 30px, #475569 30px 58px);
-    }
-
-    .lane {
-      position: absolute;
-      left: 0; right: 0;
-      height: 4px;
-      background: repeating-linear-gradient(90deg, #fde047 0 28px, transparent 28px 54px);
-      opacity: 0.85;
-    }
-
-    .lane.l1 { bottom: 102px; }
-    .lane.l2 { bottom: 62px; }
-
-    .finish {
-      position: absolute;
-      right: 36px;
-      bottom: 8px;
-      width: 14px;
-      height: 132px;
-      background:
-        repeating-linear-gradient(
-          to bottom,
-          #fff 0 10px,
-          #111 10px 20px
-        );
-      box-shadow: 0 0 12px rgba(255,255,255,0.35);
-      z-index: 5;
-    }
-
-    .finish-flag {
-      position: absolute;
-      right: 22px;
-      bottom: 140px;
-      color: #fff;
-      font-size: 12px;
-      letter-spacing: 1px;
-      z-index: 6;
-    }
-
-    .lamp {
-      position: absolute;
-      bottom: 148px;
-      width: 6px;
-      height: 70px;
-      background: #1f2937;
-      z-index: 3;
-    }
-
-    .lamp::before {
-      content: "";
-      position: absolute;
-      top: -8px;
-      left: -10px;
-      width: 26px;
-      height: 12px;
-      background: #fde68a;
-      border-radius: 6px;
-      box-shadow: 0 8px 24px 8px rgba(253, 230, 138, 0.28);
-    }
-
-    .racer {
-      position: absolute;
-      width: 92px;
-      height: 38px;
-      z-index: 8;
-      transition: filter .2s;
-    }
-
-    .racer .body {
-      position: absolute;
-      left: 8px; right: 8px; top: 8px; bottom: 10px;
-      border-radius: 10px 18px 8px 8px;
-      box-shadow: 0 6px 0 rgba(0,0,0,0.35);
-    }
-
-    .racer .cabin {
-      position: absolute;
-      left: 28px;
-      top: 2px;
-      width: 28px;
-      height: 14px;
-      background: linear-gradient(180deg, #e0f2fe, #38bdf8);
-      border-radius: 6px 10px 2px 2px;
-      opacity: 0.9;
-    }
-
-    .racer .wheel {
-      position: absolute;
-      bottom: 0;
-      width: 16px;
-      height: 16px;
-      background: #0f172a;
-      border: 3px solid #cbd5e1;
-      border-radius: 50%;
-    }
-
-    .racer .wheel.w1 { left: 12px; }
-    .racer .wheel.w2 { right: 12px; }
-
-    .racer .light {
-      position: absolute;
-      right: 6px;
-      top: 16px;
-      width: 8px;
-      height: 6px;
-      background: #fef9c3;
-      border-radius: 2px;
-      box-shadow: 6px 0 10px 2px rgba(254, 249, 195, 0.7);
-    }
-
-    .racer.selected-glow {
-      filter: drop-shadow(0 0 8px #fff);
-    }
-
-    .msg {
-      margin-top: 12px;
-      min-height: 28px;
-      font-size: 1.05rem;
-      text-align: center;
-      color: #e2e8f0;
-    }
-
-    .msg.win { color: #86efac; }
-    .msg.lose { color: #fda4af; }
-
-    .hint {
-      margin-top: 8px;
-      color: #64748b;
-      font-size: 0.8rem;
-      text-align: center;
-    }
-  </style>
+<meta charset="UTF-8">
+<title>Zombie City - Sobrevivência</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: #111;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    font-family: 'Arial', sans-serif;
+    overflow: hidden;
+    user-select: none;
+  }
+  #gameContainer {
+    position: relative;
+    width: 900px;
+    height: 600px;
+    box-shadow: 0 0 40px rgba(255,0,0,0.4);
+    border: 3px solid #400;
+    border-radius: 8px;
+    overflow: hidden;
+  }
+  canvas { display: block; cursor: crosshair; background: #1a1a1a; }
+  
+  #hud {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    color: #fff;
+    font-size: 18px;
+    font-weight: bold;
+    text-shadow: 2px 2px 4px #000;
+    pointer-events: none;
+    z-index: 10;
+  }
+  #hud div { margin-bottom: 6px; }
+  .barra {
+    width: 200px;
+    height: 18px;
+    background: rgba(0,0,0,0.6);
+    border: 2px solid #333;
+    border-radius: 4px;
+    overflow: hidden;
+    margin-top: 4px;
+  }
+  #barraVida {
+    height: 100%;
+    width: 100%;
+    background: linear-gradient(90deg, #e33, #f66);
+    transition: width 0.15s;
+  }
+  
+  #overlay {
+    position: absolute;
+    inset: 0;
+    background: rgba(0,0,0,0.85);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    color: #fff;
+    z-index: 20;
+    text-align: center;
+  }
+  #overlay h1 {
+    font-size: 48px;
+    color: #e33;
+    text-shadow: 0 0 20px #f00;
+    margin-bottom: 20px;
+    letter-spacing: 4px;
+  }
+  #overlay p {
+    font-size: 18px;
+    margin: 8px 0;
+    color: #ccc;
+  }
+  #overlay button {
+    margin-top: 25px;
+    padding: 14px 40px;
+    font-size: 20px;
+    background: #c00;
+    color: #fff;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: bold;
+    letter-spacing: 2px;
+    transition: 0.2s;
+  }
+  #overlay button:hover {
+    background: #f00;
+    box-shadow: 0 0 20px #f00;
+    transform: scale(1.05);
+  }
+  .oculto { display: none !important; }
+  
+  #miraAviso {
+    position: absolute;
+    bottom: 10px;
+    right: 10px;
+    color: #aaa;
+    font-size: 13px;
+    text-shadow: 1px 1px 2px #000;
+    z-index: 10;
+  }
+</style>
 </head>
 <body>
-  <h1>Corrida na Cidade</h1>
-  <p class="subtitle">Escolha um carro, aposte moedas virtuais e veja quem chega primeiro na rua</p>
 
-  <div class="hud">
-    <div class="coins">Moedas: <span id="coins">1000</span></div>
-    <div class="coins">Último prêmio: <span id="last">0</span></div>
+<div id="gameContainer">
+  <canvas id="game" width="900" height="600"></canvas>
+  
+  <div id="hud">
+    <div>❤ Vida: <span id="vidaTxt">100</span></div>
+    <div class="barra"><div id="barraVida"></div></div>
+    <div>💀 Zumbis mortos: <span id="mortosTxt">0</span></div>
+    <div>🌊 Onda: <span id="ondaTxt">1</span></div>
+    <div>🔫 Munição: <span id="municaoTxt">∞</span></div>
   </div>
-
-  <div class="panel">
-    <div class="label">1. Escolha o carro</div>
-    <div class="row" id="carChoices"></div>
-    <div class="label" style="margin-top:12px">2. Valor da aposta</div>
-    <div class="row" id="betChoices"></div>
-    <button class="go" id="startBtn">Apostar e correr</button>
+  
+  <div id="miraAviso">Clique para atirar</div>
+  
+  <div id="overlay">
+    <h1>ZOMBIE CITY</h1>
+    <p>Sobreviva às hordas de zumbis</p>
+    <p>🖱️ Mire com o mouse | 🖱️ Clique para atirar</p>
+    <p>⌨️ WASD ou setas para mover</p>
+    <button id="btnIniciar">INICIAR JOGO</button>
   </div>
+</div>
 
-  <div class="scene-wrap">
-    <div class="scene" id="scene">
-      <div class="stars"></div>
-      <div class="moon"></div>
-      <div id="buildings"></div>
-      <div class="sidewalk"></div>
-      <div class="road">
-        <div class="lane l1"></div>
-        <div class="lane l2"></div>
-      </div>
-      <div class="finish"></div>
-      <div class="finish-flag">CHEGADA</div>
-      <div id="carsLayer"></div>
-    </div>
-  </div>
-
-  <p class="msg" id="msg">Escolha um carro e um valor para começar.</p>
-  <p class="hint">Jogo só com moedas de brincadeira. Nada de dinheiro real.</p>
-
-  <script>
-    const CARS = [
-      { id: "vermelho", name: "Vermelho", color: "#ef4444", shade: "#7f1d1d", y: 28 },
-      { id: "azul", name: "Azul", color: "#3b82f6", shade: "#1e3a8a", y: 58 },
-      { id: "verde", name: "Verde", color: "#22c55e", shade: "#14532d", y: 88 },
-      { id: "amarelo", name: "Amarelo", color: "#eab308", shade: "#713f12", y: 118 }
-    ];
-
-    const BETS = [50, 100, 200, 400];
-    const START_X = 18;
-    const FINISH_X = () => document.getElementById("scene").clientWidth - 130;
-
-    let coins = 1000;
-    let selectedCar = "vermelho";
-    let selectedBet = 100;
-    let racing = false;
-    let positions = {};
-    let speeds = {};
-    let raf = null;
-
-    const coinsEl = document.getElementById("coins");
-    const lastEl = document.getElementById("last");
-    const msgEl = document.getElementById("msg");
-    const startBtn = document.getElementById("startBtn");
-    const carsLayer = document.getElementById("carsLayer");
-    const buildingsEl = document.getElementById("buildings");
-    const carChoices = document.getElementById("carChoices");
-    const betChoices = document.getElementById("betChoices");
-
-    function buildCity() {
-      buildingsEl.innerHTML = "";
-      const labels = ["PIZZA", "HOTEL", "CINE", "CAFE", "LOJA", "RADIO"];
-      let x = -10;
-      let i = 0;
-      while (x < 1000) {
-        const w = 48 + Math.floor(Math.random() * 46);
-        const h = 70 + Math.floor(Math.random() * 130);
-        const b = document.createElement("div");
-        b.className = "building";
-        b.style.left = x + "px";
-        b.style.width = w + "px";
-        b.style.height = h + "px";
-        if (i % 3 === 0) {
-          const sign = document.createElement("div");
-          sign.className = "neon-sign";
-          sign.textContent = labels[i % labels.length];
-          b.appendChild(sign);
+<script>
+(() => {
+  const canvas = document.getElementById('game');
+  const ctx = canvas.getContext('2d');
+  const W = canvas.width;
+  const H = canvas.height;
+  
+  // ===== Elementos HUD =====
+  const elVida = document.getElementById('vidaTxt');
+  const elBarra = document.getElementById('barraVida');
+  const elMortos = document.getElementById('mortosTxt');
+  const elOnda = document.getElementById('ondaTxt');
+  const elMunicao = document.getElementById('municaoTxt');
+  const overlay = document.getElementById('overlay');
+  const btnIniciar = document.getElementById('btnIniciar');
+  
+  // ===== Estado do jogo =====
+  let rodando = false;
+  let gameOver = false;
+  
+  const player = {
+    x: W/2, y: H/2,
+    raio: 16,
+    vel: 3.2,
+    vida: 100,
+    vidaMax: 100,
+    angulo: 0,
+    invulneravel: 0
+  };
+  
+  let zumbis = [];
+  let tiros = [];
+  let particulas = [];
+  let mortos = 0;
+  let onda = 1;
+  let zumbisParaOnda = 0;
+  let zumbisSpawnados = 0;
+  let tempoSpawn = 0;
+  let tempoJogo = 0;
+  let dificuldade = 1;
+  
+  const teclas = {};
+  const mouse = { x: W/2, y: H/2, down: false };
+  
+  // ===== Cenário da cidade (prédios gerados uma vez) =====
+  const predios = [];
+  const carros = [];
+  const postes = [];
+  
+  function gerarCidade() {
+    predios.length = 0;
+    carros.length = 0;
+    postes.length = 0;
+    
+    // Prédios ao redor (não no centro onde o player começa)
+    const tentativas = 40;
+    for (let i = 0; i < tentativas; i++) {
+      const w = 60 + Math.random() * 90;
+      const h = 60 + Math.random() * 120;
+      const x = Math.random() * (W - w);
+      const y = Math.random() * (H - h);
+      // evita centro de spawn
+      const cx = x + w/2, cy = y + h/2;
+      if (Math.hypot(cx - W/2, cy - H/2) < 140) continue;
+      // evita sobreposição muito grande
+      let sobrepoe = false;
+      for (const p of predios) {
+        if (x < p.x + p.w + 15 && x + w + 15 > p.x &&
+            y < p.y + p.h + 15 && y + h + 15 > p.y) {
+          sobrepoe = true; break;
         }
-        buildingsEl.appendChild(b);
-        x += w + 6;
-        i++;
       }
-
-      const scene = document.getElementById("scene");
-      [80, 240, 430, 620, 800].forEach((lx) => {
-        const lamp = document.createElement("div");
-        lamp.className = "lamp";
-        lamp.style.left = lx + "px";
-        scene.appendChild(lamp);
+      if (sobrepoe) continue;
+      predios.push({
+        x, y, w, h,
+        cor: `hsl(${200 + Math.random()*40}, 10%, ${15 + Math.random()*15}%)`,
+        janelas: Math.floor(Math.random() * 3) + 1,
+        janelasCols: Math.floor(Math.random() * 3) + 1
       });
     }
-
-    function renderChoices() {
-      carChoices.innerHTML = "";
-      CARS.forEach((c) => {
-        const btn = document.createElement("button");
-        btn.className = "car-btn" + (selectedCar === c.id ? " selected" : "");
-        btn.style.color = c.color;
-        btn.innerHTML = `<div class="swatch" style="background:${c.color}"></div>${c.name}`;
-        btn.onclick = () => {
-          if (racing) return;
-          selectedCar = c.id;
-          renderChoices();
-          highlightCars();
-        };
-        carChoices.appendChild(btn);
-      });
-
-      betChoices.innerHTML = "";
-      BETS.forEach((b) => {
-        const btn = document.createElement("button");
-        btn.className = "bet-btn" + (selectedBet === b ? " selected" : "");
-        btn.textContent = b + " moedas";
-        btn.onclick = () => {
-          if (racing) return;
-          selectedBet = b;
-          renderChoices();
-        };
-        betChoices.appendChild(btn);
+    
+    // Carros abandonados
+    for (let i = 0; i < 6; i++) {
+      const x = 80 + Math.random() * (W - 160);
+      const y = 80 + Math.random() * (H - 160);
+      if (Math.hypot(x - W/2, y - H/2) < 120) continue;
+      carros.push({
+        x, y,
+        w: 50, h: 24,
+        rot: Math.random() * Math.PI,
+        cor: ['#5a1a1a','#2a3a4a','#4a4a2a','#3a2a4a'][Math.floor(Math.random()*4)]
       });
     }
-
-    function makeCars() {
-      carsLayer.innerHTML = "";
-      CARS.forEach((c) => {
-        const el = document.createElement("div");
-        el.className = "racer";
-        el.id = "car-" + c.id;
-        el.style.bottom = c.y + "px";
-        el.style.left = START_X + "px";
-        el.innerHTML = `
-          <div class="body" style="background: linear-gradient(180deg, ${c.color}, ${c.shade})"></div>
-          <div class="cabin"></div>
-          <div class="wheel w1"></div>
-          <div class="wheel w2"></div>
-          <div class="light"></div>
-        `;
-        carsLayer.appendChild(el);
-        positions[c.id] = START_X;
-      });
-      highlightCars();
-    }
-
-    function highlightCars() {
-      CARS.forEach((c) => {
-        const el = document.getElementById("car-" + c.id);
-        if (!el) return;
-        el.classList.toggle("selected-glow", c.id === selectedCar);
+    
+    // Postes de luz
+    for (let i = 0; i < 10; i++) {
+      postes.push({
+        x: 40 + Math.random() * (W - 80),
+        y: 40 + Math.random() * (H - 80)
       });
     }
-
-    function resetCars() {
-      CARS.forEach((c) => {
-        positions[c.id] = START_X;
-        const el = document.getElementById("car-" + c.id);
-        if (el) el.style.left = START_X + "px";
+  }
+  
+  // ===== Spawn de zumbis =====
+  function iniciarOnda() {
+    zumbisParaOnda = 4 + onda * 2;
+    zumbisSpawnados = 0;
+    tempoSpawn = 0;
+  }
+  
+  function spawnZumbi() {
+    const lado = Math.floor(Math.random() * 4);
+    let x, y;
+    const margem = 40;
+    if (lado === 0) { x = Math.random() * W; y = -margem; }
+    else if (lado === 1) { x = W + margem; y = Math.random() * H; }
+    else if (lado === 2) { x = Math.random() * W; y = H + margem; }
+    else { x = -margem; y = Math.random() * H; }
+    
+    const tipo = Math.random() < 0.15 && onda >= 3 ? 'rapido' : 'normal';
+    const vidaBase = tipo === 'rapido' ? 30 : 50;
+    const velBase = tipo === 'rapido' ? 1.9 : 1.2;
+    
+    zumbis.push({
+      x, y,
+      raio: tipo === 'rapido' ? 12 : 15,
+      vel: (velBase + onda * 0.12) * (0.9 + Math.random()*0.2),
+      vida: vidaBase + onda * 8,
+      vidaMax: vidaBase + onda * 8,
+      dano: tipo === 'rapido' ? 8 : 12,
+      tipo,
+      angulo: 0,
+      cooldownAtaque: 0,
+      wobble: Math.random() * Math.PI * 2
+    });
+    zumbisSpawnados++;
+  }
+  
+  // ===== Tiro =====
+  function atirar() {
+    const angulo = Math.atan2(mouse.y - player.y, mouse.x - player.x);
+    const velTiro = 14;
+    tiros.push({
+      x: player.x + Math.cos(angulo) * (player.raio + 4),
+      y: player.y + Math.sin(angulo) * (player.raio + 4),
+      vx: Math.cos(angulo) * velTiro,
+      vy: Math.sin(angulo) * velTiro,
+      vida: 60,
+      raio: 3
+    });
+    
+    // recuo visual
+    for (let i = 0; i < 4; i++) {
+      particulas.push({
+        x: player.x + Math.cos(angulo) * player.raio,
+        y: player.y + Math.sin(angulo) * player.raio,
+        vx: Math.cos(angulo + (Math.random()-0.5)*0.8) * (3 + Math.random()*4),
+        vy: Math.sin(angulo + (Math.random()-0.5)*0.8) * (3 + Math.random()*4),
+        vida: 12 + Math.random()*8,
+        cor: '#ffcc33',
+        tamanho: 2 + Math.random()*2
       });
     }
-
-    function updateHud() {
-      coinsEl.textContent = coins;
+  }
+  
+  // ===== Partículas de sangue =====
+  function criarSangue(x, y, cor = '#a00') {
+    for (let i = 0; i < 12; i++) {
+      const a = Math.random() * Math.PI * 2;
+      const v = 1 + Math.random() * 5;
+      particulas.push({
+        x, y,
+        vx: Math.cos(a) * v,
+        vy: Math.sin(a) * v,
+        vida: 20 + Math.random()*20,
+        cor: cor,
+        tamanho: 2 + Math.random()*3
+      });
     }
-
-    function setMsg(text, type) {
-      msgEl.textContent = text;
-      msgEl.className = "msg" + (type ? " " + type : "");
+  }
+  
+  // ===== Atualização =====
+  function atualizar(dt) {
+    tempoJogo += dt;
+    
+    // Movimento do player
+    let dx = 0, dy = 0;
+    if (teclas['w'] || teclas['arrowup']) dy -= 1;
+    if (teclas['s'] || teclas['arrowdown']) dy += 1;
+    if (teclas['a'] || teclas['arrowleft']) dx -= 1;
+    if (teclas['d'] || teclas['arrowright']) dx += 1;
+    
+    if (dx || dy) {
+      const len = Math.hypot(dx, dy);
+      dx /= len; dy /= len;
+      player.x += dx * player.vel;
+      player.y += dy * player.vel;
     }
-
-    function startRace() {
-      if (racing) return;
-      if (selectedBet > coins) {
-        setMsg("Você não tem moedas suficientes para essa aposta.", "lose");
-        return;
+    
+    // Limites do mapa
+    player.x = Math.max(player.raio, Math.min(W - player.raio, player.x));
+    player.y = Math.max(player.raio, Math.min(H - player.raio, player.y));
+    
+    // Ângulo para o mouse
+    player.angulo = Math.atan2(mouse.y - player.y, mouse.x - player.x);
+    
+    // Invulnerabilidade
+    if (player.invulneravel > 0) player.invulneravel -= dt;
+    
+    // Spawn de zumbis
+    if (zumbisSpawnados < zumbisParaOnda) {
+      tempoSpawn += dt;
+      if (tempoSpawn > 35) {
+        tempoSpawn = 0;
+        spawnZumbi();
       }
-
-      coins -= selectedBet;
-      updateHud();
-      racing = true;
-      startBtn.disabled = true;
-      resetCars();
-
-      CARS.forEach((c) => {
-        // velocidade base + um extra aleatório (a corrida não é combinada)
-        speeds[c.id] = 2.2 + Math.random() * 3.4;
-      });
-
-      setMsg("Valendo! Os carros saíram da largada...");
-      lastEl.textContent = "—";
-      loop();
+    } else if (zumbis.length === 0) {
+      // Próxima onda
+      onda++;
+      dificuldade += 0.2;
+      iniciarOnda();
+      // cura pequena
+      player.vida = Math.min(player.vidaMax, player.vida + 15);
     }
-
-    function loop() {
-      const finish = FINISH_X();
-      let winner = null;
-
-      CARS.forEach((c) => {
-        positions[c.id] += speeds[c.id];
-        // pequenas variações durante a prova
-        if (Math.random() < 0.08) {
-          speeds[c.id] += (Math.random() - 0.45) * 0.35;
-          speeds[c.id] = Math.max(1.6, Math.min(6.2, speeds[c.id]));
+    
+    // Atualiza zumbis
+    for (let i = zumbis.length - 1; i >= 0; i--) {
+      const z = zumbis[i];
+      const ang = Math.atan2(player.y - z.y, player.x - z.x);
+      z.angulo = ang;
+      z.wobble += 0.15;
+      
+      // Movimento com leve zigue-zague
+      const wobbleX = Math.cos(z.wobble) * 0.3;
+      const wobbleY = Math.sin(z.wobble) * 0.3;
+      z.x += Math.cos(ang) * z.vel + wobbleX;
+      z.y += Math.sin(ang) * z.vel + wobbleY;
+      
+      // Colisão com player
+      const dist = Math.hypot(player.x - z.x, player.y - z.y);
+      if (dist < player.raio + z.raio) {
+        if (player.invulneravel <= 0) {
+          player.vida -= z.dano;
+          player.invulneravel = 30;
+          criarSangue(player.x, player.y, '#f33');
+          if (player.vida <= 0) {
+            player.vida = 0;
+            finalizarJogo();
+            return;
+          }
         }
-        const el = document.getElementById("car-" + c.id);
-        el.style.left = positions[c.id] + "px";
-        if (positions[c.id] >= finish && !winner) winner = c.id;
-      });
-
-      if (winner) {
-        endRace(winner);
-        return;
-      }
-      raf = requestAnimationFrame(loop);
-    }
-
-    function endRace(winnerId) {
-      racing = false;
-      startBtn.disabled = false;
-      const winner = CARS.find((c) => c.id === winnerId);
-      const won = winnerId === selectedCar;
-      if (won) {
-        const prize = selectedBet * 3;
-        coins += prize;
-        lastEl.textContent = "+" + prize;
-        setMsg("Chegada! O " + winner.name + " venceu. Você ganhou " + prize + " moedas!", "win");
-      } else {
-        lastEl.textContent = "0";
-        setMsg("Chegada! O " + winner.name + " venceu. Sua aposta não foi dessa vez.", "lose");
-      }
-      updateHud();
-      if (coins <= 0) {
-        coins = 200;
-        updateHud();
-        setMsg((msgEl.textContent || "") + " Você ganhou 200 moedas extras para continuar.", "win");
       }
     }
-
-    startBtn.addEventListener("click", startRace);
-
-    buildCity();
-    makeCars();
-    renderChoices();
-    updateHud();
-  </script>
+    
+    // Atualiza tiros
+    for (let i = tiros.length - 1; i >= 0; i--) {
+      const t = tiros[i];
+      t.x += t.vx;
+      t.y += t.vy;
+      t.vida--;
+      
+      // fora da tela
+      if (t.x < -20 || t.x > W + 20 || t.y < -20 || t.y > H + 20 || t.vida <= 0) {
+        tiros.splice(i, 1);
+        continue;
+      }
+      
+      // colisão com zumbis
+      let acertou = false;
+      for (let j = zumbis.length - 1; j >= 0; j--) {
+        const z = zumbis[j];
+        const d = Math.hypot(t.x - z.x, t.y - z.y);
+        if (d < z.raio + t.raio) {
+          z.vida -= 34;
+          criarSangue(z.x, z.y);
+          acertou = true;
+          
+          if (z.vida <= 0) {
+            criarSangue(z.x, z.y, '#800');
+            zumbis.splice(j, 1);
+            mortos++;
+          }
+          break;
+        }
+      }
+      if (acertou) tiros.splice(i, 1);
+    }
+    
+    // Atualiza partículas
+    for (let i = particulas.length - 1; i >= 0; i--) {
+      const p = particulas[i];
+      p.x += p.vx;
+      p.y += p.vy;
+      p.vx *= 0.94;
+      p.vy *= 0.94;
+      p.vida--;
+      if (p.vida <= 0) particulas.splice(i, 1);
+    }
+    
+    // Atualiza HUD
+    elVida.textContent = Math.ceil(player.vida);
+    elBarra.style.width = (player.vida / player.vidaMax * 100) + '%';
+    elMortos.textContent = mortos;
+    elOnda.textContent = onda;
+  }
+  
+  // ===== Render =====
+  function desenharCidade() {
+    // chão (asfalto)
+    ctx.fillStyle = '#222';
+    ctx.fillRect(0, 0, W, H);
+    
+    // linhas de rua
+    ctx.strokeStyle = '#444';
+    ctx.lineWidth = 3;
+    ctx.setLineDash([20, 20]);
+    ctx.beginPath();
+    ctx.moveTo(W/2, 0); ctx.lineTo(W/2, H);
+    ctx.moveTo(0, H/2); ctx.lineTo(W, H/2);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    
+    // calçadas
+    ctx.fillStyle = '#2a2a2a';
+    ctx.fillRect(0, 0, W, 8);
+    ctx.fillRect(0, H - 8, W, 8);
+    ctx.fillRect(0, 0, 8, H);
+    ctx.fillRect(W - 8, 0, 8, H);
+    
+    // postes de luz
+    for (const p of postes) {
+      // luz
+      const grad = ctx.createRadialGradient(p.x, p.y, 5, p.x, p.y, 70);
+      grad.addColorStop(0, 'rgba(255,240,150,0.15)');
+      grad.addColorStop(1, 'rgba(255,240,150,0)');
+      ctx.fillStyle = grad;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, 70, 0, Math.PI * 2);
+      ctx.fill();
+      
+      ctx.fillStyle = '#333';
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, 4, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    
+    // prédios
+    for (const p of predios) {
+      // sombra
+      ctx.fillStyle = 'rgba(0,0,0,0.5)';
+      ctx.fillRect(p.x + 5, p.y + 5, p.w, p.h);
+      
+      // corpo
+      ctx.fillStyle = p.cor;
+      ctx.fillRect(p.x, p.y, p.w, p.h);
+      
+      // borda
+      ctx.strokeStyle = '#000';
+      ctx.lineWidth = 2;
+      ctx.strokeRect(p.x, p.y, p.w, p.h);
+      
+      // janelas
+      const janW = 12, janH = 14;
+      const padX = (p.w - p.janelas * janW) / (p.janelas + 1);
+      const padY = (p.h - p.janelasCols * janH) / (p.janelasCols + 1);
+      for (let r = 0; r < p.janelasCols; r++) {
+        for (let c = 0; c < p.janelas; c++) {
+          const jx = p.x + padX + c * (janW + padX);
+          const jy = p.y + padY + r * (janH + padY);
+          const aceso = Math.random() < 0.3;
+          ctx.fillStyle = aceso ? 'rgba(255,200,80,0.7)' : 'rgba(20,30,40,0.9)';
+          ctx.fillRect(jx, jy, janW, janH);
+        }
+      }
+    }
+    
+    // carros
+    for (const c of carros) {
+      ctx.save();
+      ctx.translate(c.x, c.y);
+      ctx.rotate(c.rot);
+      // sombra
+      ctx.fillStyle = 'rgba(0,0,0,0.4)';
+      ctx.fillRect(-c.w/2 + 3, -c.h/2 + 3, c.w, c.h);
+      // corpo
+      ctx.fillStyle = c.cor;
+      ctx.fillRect(-c.w/2, -c.h/2, c.w, c.h);
+      // teto
+      ctx.fillStyle = 'rgba(0,0,0,0.4)';
+      ctx.fillRect(-c.w/4, -c.h/2 + 3, c.w/2, c.h - 6);
+      // vidros
+      ctx.fillStyle = '#223';
+      ctx.fillRect(-c.w/4, -c.h/2 + 2, c.w/6, c.h - 4);
+      ctx.fillRect(c.w/8, -c.h/2 + 2, c.w/6, c.h - 4);
+      // borda
+      ctx.strokeStyle = '#000';
+      ctx.lineWidth = 1.5;
+      ctx.strokeRect(-c.w/2, -c.h/2, c.w, c.h);
+      ctx.restore();
+    }
+  }
+  
+  function desenharPlayer() {
+    ctx.save();
+    ctx.translate(player.x, player.y);
+    
+    // sombra
+    ctx.fillStyle = 'rgba(0,0,0,0.5)';
+    ctx.beginPath();
+    ctx.ellipse(3, 5, player.raio, player.raio * 0.8, 0, 0, Math.PI * 2);
+    ctx.fill();
+    
+    // piscar quando invulnerável
+    if (player.invulneravel > 0 && Math.floor(player.invulneravel / 4) % 2 === 0) {
+      ctx.globalAlpha = 0.5;
+    }
+    
+    // corpo
+    ctx.fillStyle = '#3a7';
+    ctx.beginPath();
+    ctx.arc(0, 0, player.raio, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = '#000';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+    
+    // cabeça
+    ctx.fillStyle = '#fa5';
+    ctx.beginPath();
+    ctx.arc(0, -2, player.raio * 0.55, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+    
+    // arma (cano)
+    ctx.rotate(player.angulo);
+    ctx.fillStyle = '#555';
+    ctx.fillRect(player.raio - 2, -3, 18, 6);
+    ctx.fillStyle = '#333';
+    ctx.fillRect(player.raio + 10, -2, 6, 4);
+    
+    ctx.restore();
+  }
+  
+  function desenharZumbi(z) {
+    ctx.save();
+    ctx.translate(z.x, z.y);
+    
+    // sombra
+    ctx.fillStyle = 'rgba(0,0,0,0.5)';
+    ctx.beginPath();
+    ctx.ellipse(2, 4, z.raio, z.raio * 0.7, 0, 0, Math.PI * 2);
+    ctx.fill();
+    
+    // corpo
+    const corCorpo = z.tipo === 'rapido' ? '#6a3' : '#4a5a3a';
+    ctx.fillStyle = corCorpo;
+    ctx.beginPath();
+    ctx.arc(0, 0, z.raio, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = '#111';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+    
+    // braços esticados (para o player)
+    ctx.save();
+    ctx.rotate(z.angulo);
+    ctx.fillStyle = corCorpo;
+    ctx.fillRect(z.raio * 0.4, -z.raio * 0.7, z.raio * 0.9, z.raio * 0.35);
+    ctx.fillRect(z.raio * 0.4, z.raio * 0.35, z.raio * 0.9, z.raio * 0.35);
+    ctx.strokeStyle = '#111';
+    ctx.strokeRect(z.raio * 0.4, -z.raio * 0.7, z.raio * 0.9, z.raio * 0.35);
+    ctx.strokeRect(z.raio * 0.4, z.raio * 0.35, z.raio * 0.9, z.raio * 0.35);
+    ctx.restore();
+    
+    // olhos vermelhos
+    ctx.fillStyle = '#f00';
+    ctx.beginPath();
+    ctx.arc(-3, -4, 2.5, 0, Math.PI * 2);
+    ctx.arc(3, -4, 2.5, 0, Math.PI * 2);
+    ctx.fill();
+    
+    // boca
+    ctx.strokeStyle = '#111';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(-4, 5);
+    ctx.lineTo(-1, 7);
+    ctx.lineTo(1, 5);
+    ctx.lineTo(4, 7);
+    ctx.stroke();
+    
+    // barra de vida
+    if (z.vida < z.vidaMax) {
+      const w = z.raio * 2;
+      ctx.fillStyle = 'rgba(0,0,0,0.6)';
+      ctx.fillRect(-w/2, -z.raio - 10, w, 4);
+      ctx.fillStyle = '#e33';
+      ctx.fillRect(-w/2, -z.raio - 10, w * (z.vida / z.vidaMax), 4);
+    }
+    
+    ctx.restore();
+  }
+  
+  function desenhar() {
+    desenharCidade();
+    
+    // partículas (atrás dos personagens)
+    for (const p of particulas) {
+      ctx.globalAlpha = Math.min(1, p.vida / 20);
+      ctx.fillStyle = p.cor;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.tamanho, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.globalAlpha = 1;
+    
+    // zumbis
+    for (const z of zumbis) desenharZumbi(z);
+    
+    // tiros
+    for (const t of tiros) {
+      // rastro
+      ctx.strokeStyle = 'rgba(255,220,100,0.6)';
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.moveTo(t.x, t.y);
+      ctx.lineTo(t.x - t.vx * 1.5, t.y - t.vy * 1.5);
+      ctx.stroke();
+      
+      // projétil
+      ctx.fillStyle = '#ffd44d';
+      ctx.beginPath();
+      ctx.arc(t.x, t.y, t.raio, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = '#fff';
+      ctx.beginPath();
+      ctx.arc(t.x, t.y, t.raio * 0.5, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    
+    // player
+    desenharPlayer();
+    
+    // mira do mouse
+    if (!gameOver) {
+      ctx.strokeStyle = 'rgba(255,80,80,0.8)';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(mouse.x, mouse.y, 10, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(mouse.x - 15, mouse.y);
+      ctx.lineTo(mouse.x - 5, mouse.y);
+      ctx.moveTo(mouse.x + 5, mouse.y);
+      ctx.lineTo(mouse.x + 15, mouse.y);
+      ctx.moveTo(mouse.x, mouse.y - 15);
+      ctx.lineTo(mouse.x, mouse.y - 5);
+      ctx.moveTo(mouse.x, mouse.y + 5);
+      ctx.lineTo(mouse.x, mouse.y + 15);
+      ctx.stroke();
+    }
+  }
+  
+  // ===== Loop principal =====
+  let ultimoTempo = 0;
+  function loop(tempo) {
+    if (!rodando) return;
+    const dt = Math.min(50, tempo - ultimoTempo) / 16.67;
+    ultimoTempo = tempo;
+    
+    if (!gameOver) atualizar(dt);
+    desenhar();
+    
+    requestAnimationFrame(loop);
+  }
+  
+  // ===== Controles =====
+  window.addEventListener('keydown', e => {
+    const k = e.key.toLowerCase();
+    teclas[k] = true;
+    if (['arrowup','arrowdown','arrowleft','arrowright',' '].includes(k)) e.preventDefault();
+  });
+  window.addEventListener('keyup', e => {
+    teclas[e.key.toLowerCase()] = false;
+  });
+  
+  canvas.addEventListener('mousemove', e => {
+    const r = canvas.getBoundingClientRect();
+    mouse.x = (e.clientX - r.left) * (W / r.width);
+    mouse.y = (e.clientY - r.top) * (H / r.height);
+  });
+  
+  canvas.addEventListener('mousedown', e => {
+    if (e.button === 0 && rodando && !gameOver) {
+      mouse.down = true;
+      atirar();
+    }
+  });
+  canvas.addEventListener('mouseup', () => mouse.down = false);
+  canvas.addEventListener('contextmenu', e => e.preventDefault());
+  
+  // Tiro automático ao segurar
+  setInterval(() => {
+    if (rodando && !gameOver && mouse.down) atirar();
+  }, 130);
+  
+  // ===== Início / Fim =====
+  function iniciarJogo() {
+    player.x = W/2;
+    player.y = H/2;
+    player.vida = player.vidaMax;
+    player.invulneravel = 0;
+    
+    zumbis = [];
+    tiros = [];
+    particulas = [];
+    mortos = 0;
+    onda = 1;
+    zumbisParaOnda = 0;
+    zumbisSpawnados = 0;
+    tempoSpawn = 0;
+    tempoJogo = 0;
+    gameOver = false;
+    
+    gerarCidade();
+    iniciarOnda();
+    
+    overlay.classList.add('oculto');
+    rodando = true;
+    ultimoTempo = performance.now();
+    requestAnimationFrame(loop);
+  }
+  
+  function finalizarJogo() {
+    gameOver = true;
+    rodando = false;
+    overlay.classList.remove('oculto');
+    overlay.innerHTML = `
+      <h1>VOCÊ MORREU</h1>
+      <p>💀 Zumbis mortos: ${mortos}</p>
+      <p>🌊 Ondas sobrevividas: ${onda - 1}</p>
+      <button id="btnReiniciar">TENTAR NOVAMENTE</button>
+    `;
+    document.getElementById('btnReiniciar').addEventListener('click', iniciarJogo);
+  }
+  
+  btnIniciar.addEventListener('click', iniciarJogo);
+  
+  // ===== Render inicial (fundo) =====
+  gerarCidade();
+  desenharCidade();
+})();
+</script>
 </body>
 </html>
