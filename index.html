@@ -27,7 +27,6 @@
   }
   canvas { display: block; cursor: none; }
   
-  /* ===== HUD ===== */
   #hud {
     position: absolute;
     top: 14px; left: 14px;
@@ -109,7 +108,6 @@
   }
   #btnReiniciarTop:hover { background: #d00; box-shadow: 0 0 15px #f33; }
   
-  /* ===== OVERLAYS ===== */
   #overlay, #pauseOverlay {
     position: absolute;
     inset: 0;
@@ -197,6 +195,7 @@
     </div>
     <div class="linha">ESCUDO: <span id="escudoValTxt">0</span></div>
     <div style="color:#ffd44d;">ARMA: <span id="armaTxt">Pistola</span></div>
+    <div style="color:#fd3; margin-top:5px;">LANTERNA: <span id="lanternaTxt">ON</span></div>
   </div>
   
   <div id="hudGeral">
@@ -218,6 +217,7 @@
     <p>Sobreviva à noite apocalíptica</p>
     <p style="margin-top:15px; color:#6f6;">WASD / Setas = Mover</p>
     <p style="color:#6f6;">Mouse = Mirar | Clique = Atirar</p>
+    <p style="color:#fd3;">F = Ligar/Desligar Lanterna</p>
     <p style="color:#fd3; margin-top:10px;">P / ESC = Pausar</p>
     <p style="color:#f66;">R = Reiniciar</p>
     <div class="modos">
@@ -241,6 +241,7 @@
   var elBarraEscudo = document.getElementById('barraEscudo');
   var elEscudoVal = document.getElementById('escudoValTxt');
   var elArma = document.getElementById('armaTxt');
+  var elLanterna = document.getElementById('lanternaTxt');
   var elMortos = document.getElementById('mortosTxt');
   var elOnda = document.getElementById('ondaTxt');
   var overlay = document.getElementById('overlay');
@@ -283,6 +284,11 @@
   var flashColeta = 0;
   var texturaChao = null;
   
+  // ===== LANTERNA =====
+  var lanternaAtiva = true;
+  var lanternaRaio = 220;      // raio da luz
+  var lanternaAngulo = Math.PI * 0.6; // abertura do cone (visual)
+  
   // ===== MOUSE =====
   var mouseScreen = { x: 480, y: 320 };
   var mouseWorld = { x: 0, y: 0 };
@@ -312,11 +318,9 @@
     texturaChao.height = MAPA_H;
     var tc = texturaChao.getContext('2d');
     
-    // Base asfalto
     tc.fillStyle = '#1a1a1a';
     tc.fillRect(0, 0, MAPA_W, MAPA_H);
     
-    // Ruído de asfalto (grãos)
     for (var i = 0; i < 25000; i++) {
       var x = Math.random() * MAPA_W;
       var y = Math.random() * MAPA_H;
@@ -325,7 +329,6 @@
       tc.fillRect(x, y, 1 + Math.random(), 1 + Math.random());
     }
     
-    // Rachaduras
     tc.strokeStyle = 'rgba(0,0,0,0.6)';
     tc.lineWidth = 1;
     for (var c = 0; c < 150; c++) {
@@ -342,7 +345,6 @@
       tc.stroke();
     }
     
-    // Faixas amarelas de rua
     tc.fillStyle = 'rgba(220,190,40,0.4)';
     for (var yy = 30; yy < MAPA_H; yy += 80) {
       for (var xx = 0; xx < MAPA_W; xx += 500) {
@@ -350,7 +352,6 @@
       }
     }
     
-    // Manchas escuras (óleo)
     for (var m = 0; m < 80; m++) {
       var mx = Math.random() * MAPA_W;
       var my = Math.random() * MAPA_H;
@@ -372,7 +373,6 @@
     postes = [];
     manchas = [];
     
-    // Prédios
     for (var i = 0; i < 140; i++) {
       var w = 70 + Math.random() * 90;
       var h = 70 + Math.random() * 110;
@@ -392,7 +392,6 @@
       }
       if (sobrepoe) continue;
       
-      // Janelas iluminadas aleatórias
       var janelas = [];
       var numJanelas = Math.floor(3 + Math.random() * 6);
       for (var w2 = 0; w2 < numJanelas; w2++) {
@@ -410,7 +409,6 @@
       });
     }
     
-    // Carros
     for (var k = 0; k < 25; k++) {
       var cx = 100 + Math.random() * (MAPA_W - 200);
       var cy = 100 + Math.random() * (MAPA_H - 200);
@@ -422,7 +420,6 @@
       });
     }
     
-    // Postes de luz
     for (var po = 0; po < 70; po++) {
       postes.push({
         x: 60 + Math.random() * (MAPA_W - 120),
@@ -526,7 +523,6 @@
       });
     }
     
-    // Faísca do cano
     for (var sp = 0; sp < 6; sp++) {
       var sa = angulo + (Math.random() - 0.5) * 0.6;
       var sv = 3 + Math.random() * 5;
@@ -545,7 +541,6 @@
     tremorTela = Math.max(tremorTela, 2);
   }
   
-  // ===== PARTÍCULAS DE SANGUE =====
   function criarSangue(x, y, cor, qtd) {
     for (var i = 0; i < qtd; i++) {
       var a = Math.random() * Math.PI * 2;
@@ -560,7 +555,6 @@
         tamanho: 2 + Math.random() * 3
       });
     }
-    // Mancha persistente
     if (manchas.length < 150 && Math.random() < 0.6) {
       manchas.push({
         x: x + (Math.random() - 0.5) * 15,
@@ -580,7 +574,6 @@
       player.respira += dt * 0.08;
       if (player.flash > 0) player.flash -= dt;
       
-      // Movimento
       if (player.vida > 0) {
         var dx = 0, dy = 0;
         if (teclas['w'] || teclas['arrowup']) dy -= 1;
@@ -606,7 +599,6 @@
       }
     }
     
-    // Câmera
     var alvoCamX = player.x - W / 2;
     var alvoCamY = player.y - H / 2;
     camX += (alvoCamX - camX) * 0.18;
@@ -617,7 +609,6 @@
     mouseWorld.x = mouseScreen.x + camX;
     mouseWorld.y = mouseScreen.y + camY;
     
-    // Spawn
     if (zumbisSpawnados < zumbisRestantes) {
       tempoSpawn += dt;
       if (tempoSpawn > 40) {
@@ -631,7 +622,6 @@
       mostrarAviso('ONDA ' + onda);
     }
     
-    // Zumbis
     for (var i = zumbis.length - 1; i >= 0; i--) {
       var z = zumbis[i];
       var ang = Math.atan2(player.y - z.y, player.x - z.x);
@@ -639,14 +629,12 @@
       z.passo += dt * 0.3 * z.vel;
       z.wobble += dt * 0.15;
       
-      // Movimento com leve zigue-zague
       var wobbleX = Math.cos(z.wobble) * 0.3;
       var wobbleY = Math.sin(z.wobble) * 0.3;
       
       z.x += (Math.cos(ang) * z.vel + wobbleX) * dt;
       z.y += (Math.sin(ang) * z.vel + wobbleY) * dt;
       
-      // Colisão
       var ddx = player.x - z.x;
       var ddy = player.y - z.y;
       var dist = Math.sqrt(ddx*ddx + ddy*ddy);
@@ -672,14 +660,12 @@
       }
     }
     
-    // Tiros
     for (var t = tiros.length - 1; t >= 0; t--) {
       var tiro = tiros[t];
       tiro.x += tiro.vx * dt;
       tiro.y += tiro.vy * dt;
       tiro.vida -= dt;
       
-      // Rastro
       tiro.rastro.push({ x: tiro.x, y: tiro.y });
       if (tiro.rastro.length > 4) tiro.rastro.shift();
       
@@ -728,7 +714,6 @@
       if (acertou) tiros.splice(t, 1);
     }
     
-    // Bônus
     for (var b = bonus.length - 1; b >= 0; b--) {
       var bn = bonus[b];
       bn.vida -= dt;
@@ -752,7 +737,6 @@
       }
     }
     
-    // Partículas
     for (var p = particulas.length - 1; p >= 0; p--) {
       var part = particulas[p];
       part.x += part.vx * dt;
@@ -763,7 +747,6 @@
       if (part.vida <= 0) particulas.splice(p, 1);
     }
     
-    // Timers visuais
     if (avisoTimer > 0) {
       avisoTimer -= dt;
       if (avisoTimer <= 0) elAviso.style.opacity = '0';
@@ -775,11 +758,10 @@
   
   // ===== DESENHAR =====
   function desenhar() {
-    // Fundo
-    ctx.fillStyle = '#0a0a0a';
+    // Fundo escuro (noite)
+    ctx.fillStyle = '#050505';
     ctx.fillRect(0, 0, W, H);
     
-    // Tremor de tela
     var shakeX = 0, shakeY = 0;
     if (tremorTela > 0) {
       shakeX = (Math.random() - 0.5) * tremorTela;
@@ -808,7 +790,7 @@
     }
     ctx.globalAlpha = 1;
     
-    // Luz dos postes
+    // Postes de luz
     for (var po = 0; po < postes.length; po++) {
       var poste = postes[po];
       if (poste.x + 150 < camX || poste.x - 150 > camX + W ||
@@ -823,7 +805,6 @@
       ctx.arc(poste.x, poste.y, 140, 0, Math.PI * 2);
       ctx.fill();
       
-      // Poste
       ctx.fillStyle = '#0a0a0a';
       ctx.beginPath();
       ctx.arc(poste.x, poste.y, 4, 0, Math.PI * 2);
@@ -834,34 +815,29 @@
       ctx.fill();
     }
     
-    // Prédios com sombra e janelas
+    // Prédios
     for (var i = 0; i < predios.length; i++) {
       var p = predios[i];
       if (p.x + p.w < camX - 10 || p.x > camX + W + 10 ||
           p.y + p.h < camY - 10 || p.y > camY + H + 10) continue;
       
-      // Sombra
       ctx.fillStyle = 'rgba(0,0,0,0.7)';
       ctx.fillRect(p.x + 8, p.y + 8, p.w, p.h);
       
-      // Corpo
       ctx.fillStyle = p.cor;
       ctx.fillRect(p.x, p.y, p.w, p.h);
       
-      // Gradiente de fachada
-      var grad = ctx.createLinearGradient(p.x, p.y, p.x, p.y + p.h);
-      grad.addColorStop(0, 'rgba(255,255,255,0.1)');
-      grad.addColorStop(0.5, 'rgba(0,0,0,0)');
-      grad.addColorStop(1, 'rgba(0,0,0,0.6)');
-      ctx.fillStyle = grad;
+      var gradFachada = ctx.createLinearGradient(p.x, p.y, p.x, p.y + p.h);
+      gradFachada.addColorStop(0, 'rgba(255,255,255,0.1)');
+      gradFachada.addColorStop(0.5, 'rgba(0,0,0,0)');
+      gradFachada.addColorStop(1, 'rgba(0,0,0,0.6)');
+      ctx.fillStyle = gradFachada;
       ctx.fillRect(p.x, p.y, p.w, p.h);
       
-      // Borda
       ctx.strokeStyle = '#000';
       ctx.lineWidth = 2;
       ctx.strokeRect(p.x, p.y, p.w, p.h);
       
-      // Janelas
       for (var j = 0; j < p.janelas.length; j++) {
         var jan = p.janelas[j];
         var jx = p.x + jan.x * p.w - 6;
@@ -879,7 +855,7 @@
       }
     }
     
-    // Carros com gradiente
+    // Carros
     for (var c = 0; c < carros.length; c++) {
       var car = carros[c];
       if (car.x + 80 < camX || car.x - 80 > camX + W ||
@@ -889,15 +865,12 @@
       ctx.translate(car.x, car.y);
       ctx.rotate(car.rot);
       
-      // Sombra
       ctx.fillStyle = 'rgba(0,0,0,0.6)';
       ctx.fillRect(-car.w/2 + 5, -car.h/2 + 5, car.w, car.h);
       
-      // Corpo
       ctx.fillStyle = car.cor;
       ctx.fillRect(-car.w/2, -car.h/2, car.w, car.h);
       
-      // Gradiente
       var cgrad = ctx.createLinearGradient(0, -car.h/2, 0, car.h/2);
       cgrad.addColorStop(0, 'rgba(255,255,255,0.25)');
       cgrad.addColorStop(0.5, 'rgba(0,0,0,0.1)');
@@ -905,16 +878,13 @@
       ctx.fillStyle = cgrad;
       ctx.fillRect(-car.w/2, -car.h/2, car.w, car.h);
       
-      // Teto
       ctx.fillStyle = 'rgba(0,0,0,0.5)';
       ctx.fillRect(-car.w/4, -car.h/2 + 4, car.w/2, car.h - 8);
       
-      // Vidros
       ctx.fillStyle = 'rgba(10,20,35,0.9)';
       ctx.fillRect(-car.w/4, -car.h/2 + 3, car.w/6, car.h - 6);
       ctx.fillRect(car.w/8, -car.h/2 + 3, car.w/6, car.h - 6);
       
-      // Brilho cromado
       ctx.fillStyle = 'rgba(200,200,200,0.3)';
       ctx.fillRect(-car.w/2, -car.h/2 + 1, car.w, 1);
       
@@ -946,11 +916,10 @@
       desenharZumbi(zumbis[z]);
     }
     
-    // Tiros (com rastro)
+    // Tiros
     for (var t = 0; t < tiros.length; t++) {
       var tiro = tiros[t];
       
-      // Rastro
       for (var r = 0; r < tiro.rastro.length; r++) {
         ctx.globalAlpha = (r + 1) / tiro.rastro.length * 0.5;
         ctx.fillStyle = tiro.cor;
@@ -960,7 +929,6 @@
       }
       ctx.globalAlpha = 1;
       
-      // Brilho
       var tgrad = ctx.createRadialGradient(tiro.x, tiro.y, 0, tiro.x, tiro.y, tiro.raio * 3);
       tgrad.addColorStop(0, tiro.cor);
       tgrad.addColorStop(0.4, 'rgba(255,255,255,0.6)');
@@ -970,7 +938,6 @@
       ctx.arc(tiro.x, tiro.y, tiro.raio * 3, 0, Math.PI * 2);
       ctx.fill();
       
-      // Núcleo
       ctx.fillStyle = '#fff';
       ctx.beginPath();
       ctx.arc(tiro.x, tiro.y, tiro.raio * 0.7, 0, Math.PI * 2);
@@ -982,12 +949,15 @@
     
     ctx.restore();
     
-    // Mira na tela
+    // ===== ILUMINAÇÃO / LANTERNA =====
+    // Desenha uma "máscara" escura com um furo iluminado ao redor do jogador.
+    desenharIluminacao();
+    
+    // Mira na tela (por cima da escuridão)
     if (rodando && !gameOver && !pausado) {
       var mx = mouseScreen.x;
       var my = mouseScreen.y;
       
-      // Brilho
       var miraGrad = ctx.createRadialGradient(mx, my, 0, mx, my, 20);
       miraGrad.addColorStop(0, 'rgba(255,60,60,0.3)');
       miraGrad.addColorStop(1, 'rgba(255,60,60,0)');
@@ -996,14 +966,12 @@
       ctx.arc(mx, my, 20, 0, Math.PI * 2);
       ctx.fill();
       
-      // Círculo
       ctx.strokeStyle = 'rgba(255,60,60,0.95)';
       ctx.lineWidth = 2;
       ctx.beginPath();
       ctx.arc(mx, my, 13, 0, Math.PI * 2);
       ctx.stroke();
       
-      // Cruz
       ctx.beginPath();
       ctx.moveTo(mx - 20, my);
       ctx.lineTo(mx - 8, my);
@@ -1015,14 +983,13 @@
       ctx.lineTo(mx, my + 20);
       ctx.stroke();
       
-      // Ponto central
       ctx.fillStyle = '#ff3c3c';
       ctx.beginPath();
       ctx.arc(mx, my, 2.5, 0, Math.PI * 2);
       ctx.fill();
     }
     
-    // Vinheta escura (borda)
+    // Vinheta escura
     var vig = ctx.createRadialGradient(W/2, H/2, H * 0.35, W/2, H/2, H * 0.85);
     vig.addColorStop(0, 'rgba(0,0,0,0)');
     vig.addColorStop(1, 'rgba(0,0,0,0.7)');
@@ -1052,6 +1019,75 @@
     }
   }
   
+  // ===== ILUMINAÇÃO (LANTERNA) =====
+  function desenharIluminacao() {
+    if (!player) return;
+    
+    // Posição do player na tela
+    var px = player.x - camX;
+    var py = player.y - camY;
+    
+    if (lanternaAtiva) {
+      // 1) Escurecer o mundo com uma máscara
+      ctx.save();
+      
+      // Máscara escura (fora da luz)
+      // Usamos um gradiente radial que é transparente no centro (player) e opaco nas bordas
+      var luz = ctx.createRadialGradient(px, py, 60, px, py, lanternaRaio);
+      luz.addColorStop(0, 'rgba(0,0,0,0)');          // centro iluminado
+      luz.addColorStop(0.55, 'rgba(0,0,0,0.35)');   // meio escuro
+      luz.addColorStop(0.85, 'rgba(0,0,0,0.88)');   // quase preto
+      luz.addColorStop(1, 'rgba(0,0,0,0.96)');      // preto total nas bordas
+      
+      ctx.fillStyle = luz;
+      ctx.fillRect(0, 0, W, H);
+      
+      // 2) Aura amarela suave no centro (luz da lanterna)
+      var auraAmarela = ctx.createRadialGradient(px, py, 10, px, py, 100);
+      auraAmarela.addColorStop(0, 'rgba(255,230,140,0.16)');
+      auraAmarela.addColorStop(0.5, 'rgba(255,220,100,0.06)');
+      auraAmarela.addColorStop(1, 'rgba(255,200,80,0)');
+      ctx.fillStyle = auraAmarela;
+      ctx.beginPath();
+      ctx.arc(px, py, 100, 0, Math.PI * 2);
+      ctx.fill();
+      
+      // 3) Cone de lanterna na direção do mouse (feixe)
+      var anguloPlayer = player.angulo;
+      ctx.save();
+      ctx.translate(px, py);
+      ctx.rotate(anguloPlayer);
+      
+      // Feixe cônico
+      var comprimentoFeixe = 260;
+      var aberturaFeixe = Math.PI / 4; // 45 graus
+      
+      var feixe = ctx.createRadialGradient(0, 0, 10, 0, 0, comprimentoFeixe);
+      feixe.addColorStop(0, 'rgba(255,240,170,0.18)');
+      feixe.addColorStop(0.5, 'rgba(255,230,140,0.10)');
+      feixe.addColorStop(1, 'rgba(255,220,100,0)');
+      
+      ctx.fillStyle = feixe;
+      ctx.beginPath();
+      ctx.moveTo(0, 0);
+      ctx.arc(0, 0, comprimentoFeixe, -aberturaFeixe, aberturaFeixe);
+      ctx.closePath();
+      ctx.fill();
+      
+      ctx.restore();
+      
+      ctx.restore();
+    } else {
+      // Lanterna desligada = escuro total com leve visão ao redor do player
+      var escuro = ctx.createRadialGradient(px, py, 20, px, py, 120);
+      escuro.addColorStop(0, 'rgba(0,0,0,0.6)');
+      escuro.addColorStop(0.5, 'rgba(0,0,0,0.9)');
+      escuro.addColorStop(1, 'rgba(0,0,0,0.98)');
+      ctx.fillStyle = escuro;
+      ctx.fillRect(0, 0, W, H);
+    }
+  }
+  
   // ===== PLAYER =====
   function desenharPlayer(p) {
     if (p.vida <= 0) {
@@ -1069,7 +1105,7 @@
     ctx.save();
     ctx.translate(p.x, p.y);
     
-    // Sombra realista
+    // Sombra
     ctx.fillStyle = 'rgba(0,0,0,0.6)';
     ctx.beginPath();
     ctx.ellipse(3, p.raio * 0.8, p.raio * 1.15, p.raio * 0.55, 0, 0, Math.PI * 2);
@@ -1094,7 +1130,6 @@
       ctx.stroke();
     }
     
-    // Piscar se invulnerável
     if (p.invulneravel > 0 && Math.floor(p.invulneravel / 4) % 2 === 0) {
       ctx.globalAlpha = 0.55;
     }
@@ -1116,7 +1151,7 @@
     ctx.fillStyle = '#e8a880';
     ctx.fillRect(-11, -p.raio * 0.4 + respira, 4, p.raio * 0.9);
     
-    // Torso com gradiente (camisa)
+    // Torso
     var gCorpo = ctx.createLinearGradient(-8, -p.raio * 0.6, 8, p.raio * 0.5);
     gCorpo.addColorStop(0, '#4a8a54');
     gCorpo.addColorStop(1, '#2a5a34');
@@ -1126,13 +1161,13 @@
     ctx.lineWidth = 1.5;
     ctx.strokeRect(-8, -p.raio * 0.6 + respira, 16, p.raio * 1.0);
     
-    // Colete tático
+    // Colete
     ctx.fillStyle = '#4a3a1a';
     ctx.fillRect(-8, -p.raio * 0.3 + respira, 16, 4);
     ctx.fillStyle = '#2a1a0a';
     ctx.fillRect(-8, p.raio * 0.2 + respira, 16, 3);
     
-    // Cabeça com gradiente
+    // Cabeça
     var gCabeca = ctx.createRadialGradient(-2, -p.raio * 0.85 - 2, 1, 0, -p.raio * 0.85, p.raio * 0.65);
     gCabeca.addColorStop(0, '#fcd0aa');
     gCabeca.addColorStop(1, '#d8a070');
@@ -1174,18 +1209,15 @@
     ctx.lineTo(6, -p.raio * 1.15 + respira);
     ctx.stroke();
     
-    // Braço direito + arma (rotaciona)
+    // Braço direito + arma
     ctx.save();
     ctx.rotate(p.angulo);
     
-    // Braço direito
     ctx.fillStyle = '#e8a880';
     ctx.fillRect(p.raio * 0.3, -2, p.raio * 0.75, 4);
     
-    // Arma
     var arma = ARMAS[Math.min(p.nivelArma, ARMAS.length - 1)];
     
-    // Flash do cano
     if (p.flash > 0) {
       var flashGrad = ctx.createRadialGradient(p.raio * 0.9 + 18, 0, 0, p.raio * 0.9 + 18, 0, 15);
       flashGrad.addColorStop(0, 'rgba(255,255,200,0.95)');
@@ -1197,13 +1229,11 @@
       ctx.fill();
     }
     
-    // Cano
     ctx.fillStyle = '#1a1a1a';
     ctx.fillRect(p.raio * 0.9, -3.5, 16, 7);
     ctx.fillStyle = '#444';
     ctx.fillRect(p.raio * 0.9, -2, 16, 2);
     
-    // Cor da arma
     ctx.fillStyle = arma.cor;
     ctx.fillRect(p.raio * 0.9 + 14, -3, 3, 6);
     
@@ -1217,37 +1247,31 @@
     ctx.save();
     ctx.translate(z.x, z.y);
     
-    // Sombra
     ctx.fillStyle = 'rgba(0,0,0,0.6)';
     ctx.beginPath();
     ctx.ellipse(2, z.raio * 0.8, z.raio * 1.1, z.raio * 0.55, 0, 0, Math.PI * 2);
     ctx.fill();
     
-    // Rotação para o ângulo
     ctx.save();
     ctx.rotate(z.angulo + Math.PI / 2);
     
     var anda = Math.sin(z.passo * 8) * 1.8 * (z.mancando ? 1.5 : 1);
     var cabecaOscila = Math.sin(z.passo * 0.7) * 1;
     
-    // Braços esticados (na direção do jogador = -Y local após rotação)
     ctx.fillStyle = z.cor;
     ctx.fillRect(-z.raio * 0.6, -z.raio * 0.3, z.raio * 0.35, z.raio * 1.4);
     ctx.fillRect(z.raio * 0.25, -z.raio * 0.3, z.raio * 0.35, z.raio * 1.4);
     
-    // Mãos podres
     ctx.fillStyle = '#5a6a4a';
     ctx.beginPath();
     ctx.arc(-z.raio * 0.42, -z.raio * 0.4, 3, 0, Math.PI * 2);
     ctx.arc(z.raio * 0.42, -z.raio * 0.4, 3, 0, Math.PI * 2);
     ctx.fill();
     
-    // Pernas (atrás)
     ctx.fillStyle = '#2a1a0a';
     ctx.fillRect(-6, z.raio * 0.2 + anda, 4, z.raio * 0.7);
     ctx.fillRect(2, z.raio * 0.2 - anda, 4, z.raio * 0.7);
     
-    // Corpo (gradiente)
     var gCorpo = ctx.createRadialGradient(-z.raio * 0.3, -z.raio * 0.3, 1, 0, 0, z.raio * 1.2);
     gCorpo.addColorStop(0, z.cor);
     gCorpo.addColorStop(1, '#0a0a0a');
@@ -1259,24 +1283,20 @@
     ctx.lineWidth = 1.5;
     ctx.stroke();
     
-    // Ferida (se tiver)
     if (z.ferida) {
       ctx.fillStyle = 'rgba(120,10,10,0.8)';
       ctx.beginPath();
       ctx.arc(-z.raio * 0.3, z.raio * 0.2, 3, 0, Math.PI * 2);
       ctx.fill();
-      // Sangue escorrendo
       ctx.fillStyle = 'rgba(180,20,20,0.5)';
       ctx.fillRect(-z.raio * 0.3 - 0.5, z.raio * 0.2, 1, 5);
     }
     
-    // Rasgo na roupa
     ctx.fillStyle = '#0a0806';
     ctx.beginPath();
     ctx.arc(z.raio * 0.4, -z.raio * 0.1, 2.5, 0, Math.PI * 2);
     ctx.fill();
     
-    // Cabeça (frente do zumbi = -Y local)
     var headY = -z.raio * 0.85 + cabecaOscila;
     var gCabeca = ctx.createRadialGradient(-2, headY - 2, 1, 0, headY, z.raio * 0.65);
     gCabeca.addColorStop(0, z.cor);
@@ -1289,7 +1309,6 @@
     ctx.lineWidth = 1.5;
     ctx.stroke();
     
-    // Cabelo
     if (z.cabelo) {
       ctx.fillStyle = '#1a0a05';
       ctx.beginPath();
@@ -1297,7 +1316,6 @@
       ctx.fill();
     }
     
-    // Olhos vermelhos brilhantes
     var olhoGrad = ctx.createRadialGradient(-3, headY - 2, 0, -3, headY - 2, 5);
     olhoGrad.addColorStop(0, '#fff');
     olhoGrad.addColorStop(0.3, '#f00');
@@ -1314,19 +1332,16 @@
     ctx.arc(4, headY - 1, 1.8, 0, Math.PI * 2);
     ctx.fill();
     
-    // Boca aberta com dentes
     ctx.fillStyle = '#1a0505';
     ctx.beginPath();
     ctx.ellipse(0, headY + z.raio * 0.4, 4.5, 2.8, 0, 0, Math.PI * 2);
     ctx.fill();
     
-    // Dentes
     ctx.fillStyle = '#c8c0a0';
     ctx.fillRect(-3, headY + z.raio * 0.3, 1.5, 2);
     ctx.fillRect(-0.5, headY + z.raio * 0.32, 1.5, 2);
     ctx.fillRect(2, headY + z.raio * 0.35, 1.2, 2);
     
-    // Sangue escorrendo
     ctx.fillStyle = 'rgba(150,10,10,0.85)';
     ctx.beginPath();
     ctx.moveTo(0, headY + z.raio * 0.42);
@@ -1338,7 +1353,6 @@
     
     ctx.restore();
     
-    // Barra de vida (fora da rotação)
     if (z.vida < z.vidaMax) {
       var w = z.raio * 2.2;
       var bx = z.x - w / 2;
@@ -1367,7 +1381,6 @@
     ctx.globalAlpha = alfa;
     ctx.translate(b.x, b.y + bob);
     
-    // Halo
     var corHalo = b.tipo === 'vida' ? 'rgba(60,255,60,' : 'rgba(60,140,255,';
     var halo = ctx.createRadialGradient(0, 0, 2, 0, 0, 30);
     halo.addColorStop(0, corHalo + '0.5)');
@@ -1444,6 +1457,8 @@
     elBarraEscudo.style.width = (player.escudo / player.escudoMax * 100) + '%';
     elEscudoVal.textContent = Math.ceil(player.escudo);
     elArma.textContent = ARMAS[Math.min(player.nivelArma, ARMAS.length - 1)].nome;
+    elLanterna.textContent = lanternaAtiva ? 'ON' : 'OFF';
+    elLanterna.style.color = lanternaAtiva ? '#ffd44d' : '#666';
     elMortos.textContent = mortos;
     elOnda.textContent = onda;
   }
@@ -1466,6 +1481,9 @@
     }
     if (k === 'r' && rodando) {
       iniciarJogo();
+    }
+    if (k === 'f' && rodando && !gameOver) {
+      lanternaAtiva = !lanternaAtiva;
     }
   });
   
@@ -1500,7 +1518,6 @@
     e.preventDefault();
   });
   
-  // Tiro automático
   setInterval(function() {
     if (mouseDown && rodando && !gameOver && !pausado) {
       atirar();
@@ -1540,6 +1557,7 @@
     tremorTela = 0;
     flashDano = 0;
     flashColeta = 0;
+    lanternaAtiva = true;
     
     camX = MAPA_W / 2 - W / 2;
     camY = MAPA_H / 2 - H / 2;
@@ -1578,7 +1596,6 @@
     if (rodando || gameOver) iniciarJogo();
   });
   
-  // Inicial
   gerarCidade();
   gerarTexturaChao();
 })();
