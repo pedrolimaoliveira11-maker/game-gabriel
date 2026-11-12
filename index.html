@@ -2,11 +2,11 @@
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
-<title>Zombie City</title>
+<title>Zombie City - Realistic Survival</title>
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
   html, body {
-    background: #050505;
+    background: #000;
     display: flex;
     justify-content: center;
     align-items: center;
@@ -17,93 +17,103 @@
   }
   #gameContainer {
     position: relative;
-    width: 900px;
-    height: 600px;
-    box-shadow: 0 0 60px rgba(255,30,30,0.35);
-    border: 2px solid #300;
-    border-radius: 6px;
+    width: 960px;
+    height: 640px;
+    box-shadow: 0 0 80px rgba(255,20,20,0.5), 0 0 200px rgba(0,0,0,1);
+    border: 2px solid #2a0000;
+    border-radius: 8px;
     overflow: hidden;
+    background: #0a0a0a;
   }
-  canvas { display: block; cursor: none; background: #111; }
+  canvas { display: block; cursor: none; }
   
+  /* ===== HUD ===== */
   #hud {
     position: absolute;
-    top: 12px; left: 12px;
+    top: 14px; left: 14px;
     color: #fff;
     font-size: 13px;
     font-weight: bold;
-    text-shadow: 0 0 4px #000, 1px 1px 3px #000;
+    text-shadow: 0 0 6px #000, 2px 2px 4px #000;
     pointer-events: none;
     z-index: 10;
     font-family: 'Courier New', monospace;
+    letter-spacing: 1px;
   }
-  #hud .linha { margin-bottom: 3px; }
+  #hud .linha { margin-bottom: 4px; }
   .barra {
-    width: 160px; height: 13px;
-    background: rgba(0,0,0,0.7);
-    border: 2px solid #222;
+    width: 180px; height: 14px;
+    background: rgba(0,0,0,0.8);
+    border: 2px solid #1a0000;
     border-radius: 3px;
     overflow: hidden;
-    margin: 2px 0;
+    margin: 3px 0;
     position: relative;
+    box-shadow: inset 0 0 12px rgba(0,0,0,1);
   }
   .barraVida {
     height: 100%; width: 100%;
-    background: linear-gradient(180deg, #f44, #a00);
-    transition: width 0.1s;
+    background: linear-gradient(180deg, #ff4444, #8a0000, #4a0000);
+    transition: width 0.15s;
+    box-shadow: 0 0 8px rgba(255,50,50,0.6);
   }
   .barraEscudo {
     height: 100%; width: 0%;
-    background: linear-gradient(180deg, #6af, #148);
-    transition: width 0.1s;
+    background: linear-gradient(180deg, #6af, #148, #035);
+    transition: width 0.15s;
     position: absolute; top: 0; left: 0;
+    box-shadow: 0 0 8px rgba(100,180,255,0.7);
   }
   #hudGeral {
     position: absolute;
-    top: 12px; left: 50%;
+    top: 14px; left: 50%;
     transform: translateX(-50%);
     color: #fff;
-    font-size: 13px;
+    font-size: 14px;
     font-weight: bold;
-    text-shadow: 0 0 4px #000;
+    text-shadow: 0 0 6px #000;
     pointer-events: none;
     z-index: 10;
     font-family: 'Courier New', monospace;
-    background: rgba(0,0,0,0.5);
-    padding: 4px 12px;
+    background: rgba(0,0,0,0.55);
+    padding: 6px 16px;
     border-radius: 4px;
-    border: 1px solid #333;
+    border: 1px solid #2a0000;
+    letter-spacing: 2px;
   }
   
   #btnPausarTop, #btnReiniciarTop {
     position: absolute;
-    top: 12px;
-    padding: 7px 14px;
+    top: 14px;
+    padding: 8px 16px;
     color: #fff;
-    border-radius: 5px;
+    border-radius: 4px;
     font-size: 12px;
     font-weight: bold;
     cursor: pointer;
     z-index: 12;
     font-family: 'Courier New', monospace;
+    letter-spacing: 1px;
+    transition: 0.15s;
   }
   #btnPausarTop {
-    right: 130px;
+    right: 140px;
     background: rgba(160,120,20,0.85);
     border: 2px solid #fd3;
   }
-  #btnPausarTop:hover { background: #da0; }
+  #btnPausarTop:hover { background: #da0; box-shadow: 0 0 15px #fd3; }
   #btnReiniciarTop {
-    right: 12px;
+    right: 14px;
     background: rgba(160,20,20,0.85);
     border: 2px solid #f33;
   }
-  #btnReiniciarTop:hover { background: #d00; }
+  #btnReiniciarTop:hover { background: #d00; box-shadow: 0 0 15px #f33; }
   
+  /* ===== OVERLAYS ===== */
   #overlay, #pauseOverlay {
     position: absolute;
     inset: 0;
-    background: rgba(0,0,0,0.9);
+    background: radial-gradient(circle at center, rgba(30,0,0,0.95), rgba(0,0,0,0.99));
     display: flex;
     flex-direction: column;
     justify-content: center;
@@ -115,38 +125,45 @@
   }
   #pauseOverlay { z-index: 18; }
   #overlay h1, #pauseOverlay h1 {
-    font-size: 44px;
+    font-size: 52px;
     color: #e33;
-    text-shadow: 0 0 30px #f00;
-    margin-bottom: 12px;
-    letter-spacing: 5px;
+    text-shadow: 0 0 40px #f00, 0 0 80px #f00, 4px 4px 8px #000;
+    margin-bottom: 16px;
+    letter-spacing: 8px;
     font-family: 'Courier New', monospace;
   }
-  #pauseOverlay h1 { color: #fd3; text-shadow: 0 0 30px #fa0; }
+  #pauseOverlay h1 { color: #fd3; text-shadow: 0 0 40px #fa0; }
   #overlay p, #pauseOverlay p {
-    font-size: 13px;
-    margin: 4px 0;
-    color: #ccc;
+    font-size: 14px;
+    margin: 5px 0;
+    color: #bbb;
     font-family: 'Courier New', monospace;
+    letter-spacing: 1px;
   }
   .modos {
     display: flex;
     gap: 15px;
-    margin-top: 20px;
+    margin-top: 25px;
   }
   #overlay button, #pauseOverlay button {
-    padding: 13px 28px;
-    font-size: 15px;
-    background: linear-gradient(180deg, #c00, #700);
+    padding: 15px 40px;
+    font-size: 16px;
+    background: linear-gradient(180deg, #c00, #600);
     color: #fff;
     border: 2px solid #f33;
-    border-radius: 6px;
+    border-radius: 5px;
     cursor: pointer;
     font-weight: bold;
-    letter-spacing: 2px;
+    letter-spacing: 3px;
     font-family: 'Courier New', monospace;
+    transition: 0.2s;
+    box-shadow: 0 0 20px rgba(255,0,0,0.4);
   }
-  #overlay button:hover, #pauseOverlay button:hover { background: #f00; }
+  #overlay button:hover, #pauseOverlay button:hover { 
+    background: linear-gradient(180deg, #f00, #800);
+    box-shadow: 0 0 30px #f00;
+    transform: scale(1.05);
+  }
   .oculto { display: none !important; }
   
   #avisoNivel {
@@ -154,24 +171,25 @@
     top: 50%; left: 50%;
     transform: translate(-50%, -50%);
     color: #ffd44d;
-    font-size: 26px;
+    font-size: 32px;
     font-weight: bold;
-    text-shadow: 0 0 20px #f80;
+    text-shadow: 0 0 20px #f80, 0 0 40px #f80, 3px 3px 6px #000;
     z-index: 15;
     pointer-events: none;
     opacity: 0;
     transition: opacity 0.3s;
     font-family: 'Courier New', monospace;
+    letter-spacing: 3px;
   }
 </style>
 </head>
 <body>
 
 <div id="gameContainer">
-  <canvas id="game" width="900" height="600"></canvas>
+  <canvas id="game" width="960" height="640"></canvas>
   
   <div id="hud">
-    <div class="linha" style="color:#6f6;">JOGADOR</div>
+    <div class="linha" style="color:#6f6;">SOBREVIVENTE</div>
     <div class="linha">VIDA: <span id="vidaTxt">100</span></div>
     <div class="barra">
       <div class="barraVida" id="barraVida"></div>
@@ -182,11 +200,11 @@
   </div>
   
   <div id="hudGeral">
-    MORTOS: <span id="mortosTxt">0</span> | ONDA: <span id="ondaTxt">1</span>
+    💀 <span id="mortosTxt">0</span> | 🌊 ONDA <span id="ondaTxt">1</span>
   </div>
   
-  <button id="btnPausarTop">PAUSAR (P)</button>
-  <button id="btnReiniciarTop">REINICIAR (R)</button>
+  <button id="btnPausarTop">⏸ PAUSAR (P)</button>
+  <button id="btnReiniciarTop">⟳ REINICIAR (R)</button>
   <div id="avisoNivel"></div>
   
   <div id="pauseOverlay" class="oculto">
@@ -197,11 +215,10 @@
   
   <div id="overlay">
     <h1>ZOMBIE CITY</h1>
-    <p>Mapa gigante • Sobreviva às hordas</p>
-    <p style="margin-top:15px; color:#6f6;">WASD = Mover</p>
-    <p style="color:#6f6;">Mouse = Mirar</p>
-    <p style="color:#6f6;">Clique = Atirar</p>
-    <p style="color:#fd3; margin-top:10px;">P ou ESC = Pausar</p>
+    <p>Sobreviva à noite apocalíptica</p>
+    <p style="margin-top:15px; color:#6f6;">WASD / Setas = Mover</p>
+    <p style="color:#6f6;">Mouse = Mirar | Clique = Atirar</p>
+    <p style="color:#fd3; margin-top:10px;">P / ESC = Pausar</p>
     <p style="color:#f66;">R = Reiniciar</p>
     <div class="modos">
       <button id="btnIniciar">JOGAR</button>
@@ -215,8 +232,8 @@
   
   var canvas = document.getElementById('game');
   var ctx = canvas.getContext('2d');
-  var W = 900;
-  var H = 600;
+  var W = 960;
+  var H = 640;
   
   // HUD
   var elVida = document.getElementById('vidaTxt');
@@ -235,8 +252,8 @@
   var elAviso = document.getElementById('avisoNivel');
   
   // ===== MAPA =====
-  var MAPA_W = 2400;
-  var MAPA_H = 1800;
+  var MAPA_W = 2800;
+  var MAPA_H = 2100;
   
   // ===== ESTADO =====
   var rodando = false;
@@ -252,16 +269,22 @@
   var bonus = [];
   var predios = [];
   var carros = [];
+  var postes = [];
+  var manchas = [];
   var mortos = 0;
   var onda = 1;
   var zumbisRestantes = 0;
   var zumbisSpawnados = 0;
   var tempoSpawn = 0;
   var avisoTimer = 0;
+  var tempoJogo = 0;
+  var tremorTela = 0;
+  var flashDano = 0;
+  var flashColeta = 0;
   var texturaChao = null;
   
   // ===== MOUSE =====
-  var mouseScreen = { x: 450, y: 300 };
+  var mouseScreen = { x: 480, y: 320 };
   var mouseWorld = { x: 0, y: 0 };
   var mouseDown = false;
   
@@ -270,38 +293,75 @@
   
   // ===== ARMAS =====
   var ARMAS = [
-    { nome: 'Pistola',       dano: 40,  cadencia: 120, velTiro: 14, raio: 3,   cor: '#ffd44d', multi: 1, spread: 0.03 },
-    { nome: 'Pistola Dupla', dano: 45,  cadencia: 100, velTiro: 15, raio: 3,   cor: '#ffcc33', multi: 2, spread: 0.05 },
-    { nome: 'SMG',           dano: 38,  cadencia: 65,  velTiro: 16, raio: 3,   cor: '#ffb347', multi: 2, spread: 0.08 },
-    { nome: 'Rifle',         dano: 75,  cadencia: 80,  velTiro: 18, raio: 4,   cor: '#ff9a33', multi: 1, spread: 0.02 },
-    { nome: 'Escopeta',      dano: 55,  cadencia: 150, velTiro: 15, raio: 3.5, cor: '#ff8844', multi: 5, spread: 0.28 },
-    { nome: 'Rifle Assalto', dano: 85,  cadencia: 60,  velTiro: 20, raio: 4,   cor: '#ff7044', multi: 2, spread: 0.04 },
-    { nome: 'Metralhadora',  dano: 70,  cadencia: 45,  velTiro: 21, raio: 3.5, cor: '#ff5533', multi: 3, spread: 0.12 },
-    { nome: 'Lança-Chamas',  dano: 45,  cadencia: 35,  velTiro: 12, raio: 6,   cor: '#ff3322', multi: 2, spread: 0.3 },
-    { nome: 'Plasma',        dano: 130, cadencia: 90,  velTiro: 22, raio: 6,   cor: '#aa55ff', multi: 3, spread: 0.1 },
-    { nome: 'Suprema',       dano: 180, cadencia: 50,  velTiro: 24, raio: 7,   cor: '#ff00ff', multi: 4, spread: 0.14 }
+    { nome: 'Pistola',       dano: 40,  cadencia: 120, velTiro: 15, raio: 3,   cor: '#ffd44d', multi: 1, spread: 0.03 },
+    { nome: 'Pistola Dupla', dano: 45,  cadencia: 100, velTiro: 16, raio: 3,   cor: '#ffcc33', multi: 2, spread: 0.05 },
+    { nome: 'SMG',           dano: 38,  cadencia: 65,  velTiro: 17, raio: 3,   cor: '#ffb347', multi: 2, spread: 0.08 },
+    { nome: 'Rifle',         dano: 75,  cadencia: 80,  velTiro: 19, raio: 4,   cor: '#ff9a33', multi: 1, spread: 0.02 },
+    { nome: 'Escopeta',      dano: 55,  cadencia: 150, velTiro: 16, raio: 3.5, cor: '#ff8844', multi: 5, spread: 0.28 },
+    { nome: 'Rifle Assalto', dano: 85,  cadencia: 60,  velTiro: 21, raio: 4,   cor: '#ff7044', multi: 2, spread: 0.04 },
+    { nome: 'Metralhadora',  dano: 70,  cadencia: 45,  velTiro: 22, raio: 3.5, cor: '#ff5533', multi: 3, spread: 0.12 },
+    { nome: 'Lança-Chamas',  dano: 45,  cadencia: 35,  velTiro: 13, raio: 6,   cor: '#ff3322', multi: 2, spread: 0.3 },
+    { nome: 'Plasma',        dano: 130, cadencia: 90,  velTiro: 24, raio: 6,   cor: '#aa55ff', multi: 3, spread: 0.1 },
+    { nome: 'Suprema',       dano: 180, cadencia: 50,  velTiro: 26, raio: 7,   cor: '#ff00ff', multi: 4, spread: 0.14 }
   ];
   
-  // ===== GERAR TEXTURA DO CHÃO =====
+  // ===== TEXTURA DE ASFALTO =====
   function gerarTexturaChao() {
     texturaChao = document.createElement('canvas');
     texturaChao.width = MAPA_W;
     texturaChao.height = MAPA_H;
     var tc = texturaChao.getContext('2d');
-    tc.fillStyle = '#1e1e1e';
+    
+    // Base asfalto
+    tc.fillStyle = '#1a1a1a';
     tc.fillRect(0, 0, MAPA_W, MAPA_H);
-    for (var i = 0; i < 8000; i++) {
+    
+    // Ruído de asfalto (grãos)
+    for (var i = 0; i < 25000; i++) {
       var x = Math.random() * MAPA_W;
       var y = Math.random() * MAPA_H;
-      var g = Math.floor(20 + Math.random() * 40);
-      tc.fillStyle = 'rgba(' + g + ',' + g + ',' + g + ',0.4)';
-      tc.fillRect(x, y, 2, 2);
+      var g = Math.floor(15 + Math.random() * 45);
+      tc.fillStyle = 'rgba(' + g + ',' + g + ',' + g + ',' + (0.2 + Math.random()*0.4) + ')';
+      tc.fillRect(x, y, 1 + Math.random(), 1 + Math.random());
     }
-    tc.fillStyle = 'rgba(200,180,40,0.3)';
-    for (var yy = 20; yy < MAPA_H; yy += 60) {
-      for (var xx = 0; xx < MAPA_W; xx += 400) {
-        tc.fillRect(xx + 196, yy, 8, 30);
+    
+    // Rachaduras
+    tc.strokeStyle = 'rgba(0,0,0,0.6)';
+    tc.lineWidth = 1;
+    for (var c = 0; c < 150; c++) {
+      tc.beginPath();
+      var cx = Math.random() * MAPA_W;
+      var cy = Math.random() * MAPA_H;
+      tc.moveTo(cx, cy);
+      var segments = 3 + Math.floor(Math.random() * 5);
+      for (var s = 0; s < segments; s++) {
+        cx += (Math.random() - 0.5) * 80;
+        cy += (Math.random() - 0.5) * 80;
+        tc.lineTo(cx, cy);
       }
+      tc.stroke();
+    }
+    
+    // Faixas amarelas de rua
+    tc.fillStyle = 'rgba(220,190,40,0.4)';
+    for (var yy = 30; yy < MAPA_H; yy += 80) {
+      for (var xx = 0; xx < MAPA_W; xx += 500) {
+        tc.fillRect(xx + 250 - 20, yy, 40, 30);
+      }
+    }
+    
+    // Manchas escuras (óleo)
+    for (var m = 0; m < 80; m++) {
+      var mx = Math.random() * MAPA_W;
+      var my = Math.random() * MAPA_H;
+      var mr = 20 + Math.random() * 50;
+      var grad = tc.createRadialGradient(mx, my, 2, mx, my, mr);
+      grad.addColorStop(0, 'rgba(0,0,0,0.5)');
+      grad.addColorStop(1, 'rgba(0,0,0,0)');
+      tc.fillStyle = grad;
+      tc.beginPath();
+      tc.arc(mx, my, mr, 0, Math.PI * 2);
+      tc.fill();
     }
   }
   
@@ -309,35 +369,64 @@
   function gerarCidade() {
     predios = [];
     carros = [];
-    for (var i = 0; i < 120; i++) {
-      var w = 60 + Math.random() * 80;
-      var h = 60 + Math.random() * 100;
+    postes = [];
+    manchas = [];
+    
+    // Prédios
+    for (var i = 0; i < 140; i++) {
+      var w = 70 + Math.random() * 90;
+      var h = 70 + Math.random() * 110;
       var x = Math.random() * (MAPA_W - w);
       var y = Math.random() * (MAPA_H - h);
-      if (Math.hypot(x + w/2 - MAPA_W/2, y + h/2 - MAPA_H/2) < 150) continue;
+      
+      if (Math.hypot(x + w/2 - MAPA_W/2, y + h/2 - MAPA_H/2) < 180) continue;
+      
       var sobrepoe = false;
       for (var j = 0; j < predios.length; j++) {
         var p = predios[j];
-        if (x < p.x + p.w + 20 && x + w + 20 > p.x &&
-            y < p.y + p.h + 20 && y + h + 20 > p.y) {
+        if (x < p.x + p.w + 25 && x + w + 25 > p.x &&
+            y < p.y + p.h + 25 && y + h + 25 > p.y) {
           sobrepoe = true;
           break;
         }
       }
       if (sobrepoe) continue;
+      
+      // Janelas iluminadas aleatórias
+      var janelas = [];
+      var numJanelas = Math.floor(3 + Math.random() * 6);
+      for (var w2 = 0; w2 < numJanelas; w2++) {
+        janelas.push({
+          x: 0.1 + Math.random() * 0.8,
+          y: 0.1 + Math.random() * 0.8,
+          acesa: Math.random() < 0.25
+        });
+      }
+      
       predios.push({
         x: x, y: y, w: w, h: h,
-        cor: 'hsl(210, 8%, ' + (12 + Math.random() * 8) + '%)'
+        cor: 'hsl(' + (200 + Math.random() * 40) + ', 6%, ' + (10 + Math.random() * 8) + '%)',
+        janelas: janelas
       });
     }
-    for (var k = 0; k < 20; k++) {
-      var cx = 80 + Math.random() * (MAPA_W - 160);
-      var cy = 80 + Math.random() * (MAPA_H - 160);
-      if (Math.hypot(cx - MAPA_W/2, cy - MAPA_H/2) < 150) continue;
+    
+    // Carros
+    for (var k = 0; k < 25; k++) {
+      var cx = 100 + Math.random() * (MAPA_W - 200);
+      var cy = 100 + Math.random() * (MAPA_H - 200);
+      if (Math.hypot(cx - MAPA_W/2, cy - MAPA_H/2) < 160) continue;
       carros.push({
-        x: cx, y: cy, w: 50, h: 24,
+        x: cx, y: cy, w: 55, h: 26,
         rot: Math.random() * Math.PI,
-        cor: ['#5a1a1a', '#2a3a4a', '#4a4a2a', '#3a2a4a'][Math.floor(Math.random()*4)]
+        cor: ['#5a1a1a', '#2a3a4a', '#4a4a2a', '#3a2a4a', '#2a4a3a'][Math.floor(Math.random()*5)]
+      });
+    }
+    
+    // Postes de luz
+    for (var po = 0; po < 70; po++) {
+      postes.push({
+        x: 60 + Math.random() * (MAPA_W - 120),
+        y: 60 + Math.random() * (MAPA_H - 120)
       });
     }
   }
@@ -348,7 +437,7 @@
       x: MAPA_W / 2,
       y: MAPA_H / 2,
       raio: 16,
-      vel: 3.5,
+      vel: 3.6,
       vida: 100,
       vidaMax: 100,
       escudo: 0,
@@ -356,9 +445,11 @@
       angulo: 0,
       invulneravel: 0,
       passoAnim: 0,
+      respira: 0,
       nivelArma: 0,
       mortos: 0,
-      ultimoTiro: 0
+      ultimoTiro: 0,
+      flash: 0
     };
   }
   
@@ -366,7 +457,7 @@
   function spawnZumbi() {
     var lado = Math.floor(Math.random() * 4);
     var x, y;
-    var m = 80;
+    var m = 100;
     if (lado === 0) { x = camX + Math.random() * W; y = camY - m; }
     else if (lado === 1) { x = camX + W + m; y = camY + Math.random() * H; }
     else if (lado === 2) { x = camX + Math.random() * W; y = camY + H + m; }
@@ -376,6 +467,9 @@
     
     var mult = 1 + Math.floor(mortos / 30) * 0.35;
     var rapido = Math.random() < 0.15;
+    
+    var tonsPele = ['#4a5a3a', '#3a4a2a', '#5a6a4a', '#4a4a3a', '#5a4a3a', '#3a3a2a'];
+    var tonsRoupa = ['#3a2a1a', '#2a2a3a', '#3a3a2a', '#4a2a2a', '#2a3a2a', '#2a2a2a'];
     
     zumbis.push({
       x: x, y: y,
@@ -387,7 +481,13 @@
       tipo: rapido ? 'rapido' : 'normal',
       angulo: 0,
       passo: Math.random() * Math.PI * 2,
-      cor: rapido ? '#5a8a3a' : '#4a5a3a'
+      wobble: Math.random() * Math.PI * 2,
+      cor: tonsPele[Math.floor(Math.random() * tonsPele.length)],
+      roupa: tonsRoupa[Math.floor(Math.random() * tonsRoupa.length)],
+      sangue: Math.random() < 0.3 ? '#600' : '#a00',
+      cabelo: Math.random() < 0.5,
+      mancando: Math.random() < 0.3,
+      ferida: Math.random() < 0.6
     });
     zumbisSpawnados++;
   }
@@ -407,61 +507,113 @@
     
     if (agora - player.ultimoTiro < arma.cadencia) return;
     player.ultimoTiro = agora;
+    player.flash = 8;
     
     var angulo = Math.atan2(mouseWorld.y - player.y, mouseWorld.x - player.x);
     
     for (var k = 0; k < arma.multi; k++) {
       var ang = angulo + (Math.random() - 0.5) * arma.spread * 2;
       tiros.push({
-        x: player.x + Math.cos(ang) * (player.raio + 8),
-        y: player.y + Math.sin(ang) * (player.raio + 8),
+        x: player.x + Math.cos(ang) * (player.raio + 10),
+        y: player.y + Math.sin(ang) * (player.raio + 10),
         vx: Math.cos(ang) * arma.velTiro,
         vy: Math.sin(ang) * arma.velTiro,
         raio: arma.raio,
         dano: arma.dano,
         cor: arma.cor,
-        vida: 100
+        vida: 100,
+        rastro: []
+      });
+    }
+    
+    // Faísca do cano
+    for (var sp = 0; sp < 6; sp++) {
+      var sa = angulo + (Math.random() - 0.5) * 0.6;
+      var sv = 3 + Math.random() * 5;
+      particulas.push({
+        x: player.x + Math.cos(angulo) * (player.raio + 8),
+        y: player.y + Math.sin(angulo) * (player.raio + 8),
+        vx: Math.cos(sa) * sv,
+        vy: Math.sin(sa) * sv,
+        vida: 8 + Math.random() * 6,
+        vidaMax: 14,
+        cor: arma.cor,
+        tamanho: 2 + Math.random() * 2
+      });
+    }
+    
+    tremorTela = Math.max(tremorTela, 2);
+  }
+  
+  // ===== PARTÍCULAS DE SANGUE =====
+  function criarSangue(x, y, cor, qtd) {
+    for (var i = 0; i < qtd; i++) {
+      var a = Math.random() * Math.PI * 2;
+      var v = 1 + Math.random() * 6;
+      particulas.push({
+        x: x, y: y,
+        vx: Math.cos(a) * v,
+        vy: Math.sin(a) * v,
+        vida: 20 + Math.random() * 20,
+        vidaMax: 40,
+        cor: cor,
+        tamanho: 2 + Math.random() * 3
+      });
+    }
+    // Mancha persistente
+    if (manchas.length < 150 && Math.random() < 0.6) {
+      manchas.push({
+        x: x + (Math.random() - 0.5) * 15,
+        y: y + (Math.random() - 0.5) * 15,
+        raio: 5 + Math.random() * 12,
+        alfa: 0.4 + Math.random() * 0.4,
+        cor: cor
       });
     }
   }
   
   // ===== ATUALIZAR =====
   function atualizar(dt) {
-    // Movimento
-    if (player.vida > 0) {
-      var dx = 0, dy = 0;
-      if (teclas['w'] || teclas['arrowup']) dy -= 1;
-      if (teclas['s'] || teclas['arrowdown']) dy += 1;
-      if (teclas['a'] || teclas['arrowleft']) dx -= 1;
-      if (teclas['d'] || teclas['arrowright']) dx += 1;
+    tempoJogo += dt;
+    
+    if (player) {
+      player.respira += dt * 0.08;
+      if (player.flash > 0) player.flash -= dt;
       
-      if (dx !== 0 || dy !== 0) {
-        var len = Math.sqrt(dx*dx + dy*dy);
-        player.x += (dx / len) * player.vel * dt;
-        player.y += (dy / len) * player.vel * dt;
-        player.passoAnim += dt * 0.3;
-      } else {
-        player.passoAnim *= 0.9;
+      // Movimento
+      if (player.vida > 0) {
+        var dx = 0, dy = 0;
+        if (teclas['w'] || teclas['arrowup']) dy -= 1;
+        if (teclas['s'] || teclas['arrowdown']) dy += 1;
+        if (teclas['a'] || teclas['arrowleft']) dx -= 1;
+        if (teclas['d'] || teclas['arrowright']) dx += 1;
+        
+        if (dx !== 0 || dy !== 0) {
+          var len = Math.sqrt(dx*dx + dy*dy);
+          player.x += (dx / len) * player.vel * dt;
+          player.y += (dy / len) * player.vel * dt;
+          player.passoAnim += dt * 0.35;
+        } else {
+          player.passoAnim *= 0.9;
+        }
+        
+        player.x = Math.max(player.raio, Math.min(MAPA_W - player.raio, player.x));
+        player.y = Math.max(player.raio, Math.min(MAPA_H - player.raio, player.y));
+        
+        player.angulo = Math.atan2(mouseWorld.y - player.y, mouseWorld.x - player.x);
+        
+        if (player.invulneravel > 0) player.invulneravel -= dt;
       }
-      
-      player.x = Math.max(player.raio, Math.min(MAPA_W - player.raio, player.x));
-      player.y = Math.max(player.raio, Math.min(MAPA_H - player.raio, player.y));
-      
-      // Mira
-      player.angulo = Math.atan2(mouseWorld.y - player.y, mouseWorld.x - player.x);
-      
-      if (player.invulneravel > 0) player.invulneravel -= dt;
     }
     
     // Câmera
     var alvoCamX = player.x - W / 2;
     var alvoCamY = player.y - H / 2;
-    camX += (alvoCamX - camX) * 0.2;
-    camY += (alvoCamY - camY) * 0.2;
+    camX += (alvoCamX - camX) * 0.18;
+    camY += (alvoCamY - camY) * 0.18;
     camX = Math.max(0, Math.min(MAPA_W - W, camX));
     camY = Math.max(0, Math.min(MAPA_H - H, camY));
     
-    // Mouse no mundo (atualizado com a câmera)
     mouseWorld.x = mouseScreen.x + camX;
     mouseWorld.y = mouseScreen.y + camY;
     
@@ -475,7 +627,7 @@
     } else if (zumbis.length === 0) {
       onda++;
       iniciarOnda();
-      player.vida = Math.min(player.vidaMax, player.vida + 15);
+      player.vida = Math.min(player.vidaMax, player.vida + 20);
       mostrarAviso('ONDA ' + onda);
     }
     
@@ -485,10 +637,16 @@
       var ang = Math.atan2(player.y - z.y, player.x - z.x);
       z.angulo = ang;
       z.passo += dt * 0.3 * z.vel;
+      z.wobble += dt * 0.15;
       
-      z.x += Math.cos(ang) * z.vel * dt;
-      z.y += Math.sin(ang) * z.vel * dt;
+      // Movimento com leve zigue-zague
+      var wobbleX = Math.cos(z.wobble) * 0.3;
+      var wobbleY = Math.sin(z.wobble) * 0.3;
       
+      z.x += (Math.cos(ang) * z.vel + wobbleX) * dt;
+      z.y += (Math.sin(ang) * z.vel + wobbleY) * dt;
+      
+      // Colisão
       var ddx = player.x - z.x;
       var ddy = player.y - z.y;
       var dist = Math.sqrt(ddx*ddx + ddy*ddy);
@@ -501,7 +659,10 @@
           dano -= abs;
         }
         if (dano > 0) player.vida -= dano;
-        player.invulneravel = 30;
+        player.invulneravel = 25;
+        criarSangue(player.x, player.y, player.escudo > 0 ? '#36f' : '#f33', 8);
+        flashDano = 15;
+        tremorTela = 6;
         
         if (player.vida <= 0) {
           player.vida = 0;
@@ -518,6 +679,10 @@
       tiro.y += tiro.vy * dt;
       tiro.vida -= dt;
       
+      // Rastro
+      tiro.rastro.push({ x: tiro.x, y: tiro.y });
+      if (tiro.rastro.length > 4) tiro.rastro.shift();
+      
       if (tiro.x < -50 || tiro.x > MAPA_W + 50 || tiro.y < -50 || tiro.y > MAPA_H + 50 || tiro.vida <= 0) {
         tiros.splice(t, 1);
         continue;
@@ -533,20 +698,10 @@
         if (d2x*d2x + d2y*d2y < rTotal*rTotal) {
           zumbi.vida -= tiro.dano;
           acertou = true;
-          
-          for (var pp = 0; pp < 4; pp++) {
-            var pa = Math.random() * Math.PI * 2;
-            var pv = 1 + Math.random() * 4;
-            particulas.push({
-              x: zumbi.x, y: zumbi.y,
-              vx: Math.cos(pa) * pv,
-              vy: Math.sin(pa) * pv,
-              vida: 15, vidaMax: 15,
-              cor: '#a00', tamanho: 2
-            });
-          }
+          criarSangue(zumbi.x, zumbi.y, zumbi.sangue, 5);
           
           if (zumbi.vida <= 0) {
+            criarSangue(zumbi.x, zumbi.y, '#800', 15);
             zumbis.splice(zz, 1);
             mortos++;
             player.mortos++;
@@ -577,7 +732,7 @@
     for (var b = bonus.length - 1; b >= 0; b--) {
       var bn = bonus[b];
       bn.vida -= dt;
-      bn.bob += dt * 0.1;
+      bn.bob += dt * 0.12;
       
       if (bn.vida <= 0) {
         bonus.splice(b, 1);
@@ -592,6 +747,7 @@
         } else {
           player.escudo = Math.min(player.escudoMax, player.escudo + 30);
         }
+        flashColeta = 12;
         bonus.splice(b, 1);
       }
     }
@@ -601,61 +757,171 @@
       var part = particulas[p];
       part.x += part.vx * dt;
       part.y += part.vy * dt;
-      part.vx *= 0.94;
-      part.vy *= 0.94;
+      part.vx *= 0.93;
+      part.vy *= 0.93;
       part.vida -= dt;
       if (part.vida <= 0) particulas.splice(p, 1);
     }
     
+    // Timers visuais
     if (avisoTimer > 0) {
       avisoTimer -= dt;
       if (avisoTimer <= 0) elAviso.style.opacity = '0';
     }
+    if (tremorTela > 0) tremorTela = Math.max(0, tremorTela - dt * 0.3);
+    if (flashDano > 0) flashDano -= dt;
+    if (flashColeta > 0) flashColeta -= dt;
   }
   
   // ===== DESENHAR =====
   function desenhar() {
     // Fundo
-    ctx.fillStyle = '#1e1e1e';
+    ctx.fillStyle = '#0a0a0a';
     ctx.fillRect(0, 0, W, H);
     
+    // Tremor de tela
+    var shakeX = 0, shakeY = 0;
+    if (tremorTela > 0) {
+      shakeX = (Math.random() - 0.5) * tremorTela;
+      shakeY = (Math.random() - 0.5) * tremorTela;
+    }
+    
     ctx.save();
-    ctx.translate(-camX, -camY);
+    ctx.translate(-camX + shakeX, -camY + shakeY);
     
     // Chão
     if (texturaChao) {
       ctx.drawImage(texturaChao, camX, camY, W, H, camX, camY, W, H);
     }
     
-    // Prédios
+    // Manchas de sangue no chão
+    for (var m = 0; m < manchas.length; m++) {
+      var mac = manchas[m];
+      if (mac.x + mac.raio < camX - 10 || mac.x - mac.raio > camX + W + 10 ||
+          mac.y + mac.raio < camY - 10 || mac.y - mac.raio > camY + H + 10) continue;
+      
+      ctx.globalAlpha = mac.alfa;
+      ctx.fillStyle = mac.cor;
+      ctx.beginPath();
+      ctx.arc(mac.x, mac.y, mac.raio, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.globalAlpha = 1;
+    
+    // Luz dos postes
+    for (var po = 0; po < postes.length; po++) {
+      var poste = postes[po];
+      if (poste.x + 150 < camX || poste.x - 150 > camX + W ||
+          poste.y + 150 < camY || poste.y - 150 > camY + H) continue;
+      
+      var grad = ctx.createRadialGradient(poste.x, poste.y, 5, poste.x, poste.y, 140);
+      grad.addColorStop(0, 'rgba(255,220,130,0.22)');
+      grad.addColorStop(0.5, 'rgba(255,220,130,0.08)');
+      grad.addColorStop(1, 'rgba(255,220,130,0)');
+      ctx.fillStyle = grad;
+      ctx.beginPath();
+      ctx.arc(poste.x, poste.y, 140, 0, Math.PI * 2);
+      ctx.fill();
+      
+      // Poste
+      ctx.fillStyle = '#0a0a0a';
+      ctx.beginPath();
+      ctx.arc(poste.x, poste.y, 4, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = 'rgba(255,240,180,0.95)';
+      ctx.beginPath();
+      ctx.arc(poste.x, poste.y, 2.5, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    
+    // Prédios com sombra e janelas
     for (var i = 0; i < predios.length; i++) {
       var p = predios[i];
-      if (p.x + p.w < camX - 10 || p.x > camX + W + 10 || p.y + p.h < camY - 10 || p.y > camY + H + 10) continue;
+      if (p.x + p.w < camX - 10 || p.x > camX + W + 10 ||
+          p.y + p.h < camY - 10 || p.y > camY + H + 10) continue;
       
-      ctx.fillStyle = 'rgba(0,0,0,0.5)';
-      ctx.fillRect(p.x + 5, p.y + 5, p.w, p.h);
+      // Sombra
+      ctx.fillStyle = 'rgba(0,0,0,0.7)';
+      ctx.fillRect(p.x + 8, p.y + 8, p.w, p.h);
+      
+      // Corpo
       ctx.fillStyle = p.cor;
       ctx.fillRect(p.x, p.y, p.w, p.h);
+      
+      // Gradiente de fachada
+      var grad = ctx.createLinearGradient(p.x, p.y, p.x, p.y + p.h);
+      grad.addColorStop(0, 'rgba(255,255,255,0.1)');
+      grad.addColorStop(0.5, 'rgba(0,0,0,0)');
+      grad.addColorStop(1, 'rgba(0,0,0,0.6)');
+      ctx.fillStyle = grad;
+      ctx.fillRect(p.x, p.y, p.w, p.h);
+      
+      // Borda
       ctx.strokeStyle = '#000';
       ctx.lineWidth = 2;
       ctx.strokeRect(p.x, p.y, p.w, p.h);
+      
+      // Janelas
+      for (var j = 0; j < p.janelas.length; j++) {
+        var jan = p.janelas[j];
+        var jx = p.x + jan.x * p.w - 6;
+        var jy = p.y + jan.y * p.h - 7;
+        
+        if (jan.acesa) {
+          var jgrad = ctx.createRadialGradient(jx + 6, jy + 7, 0, jx + 6, jy + 7, 18);
+          jgrad.addColorStop(0, 'rgba(255,220,90,0.95)');
+          jgrad.addColorStop(1, 'rgba(255,150,30,0.2)');
+          ctx.fillStyle = jgrad;
+        } else {
+          ctx.fillStyle = 'rgba(10,15,25,0.95)';
+        }
+        ctx.fillRect(jx, jy, 12, 14);
+      }
     }
     
-    // Carros
+    // Carros com gradiente
     for (var c = 0; c < carros.length; c++) {
       var car = carros[c];
-      if (car.x + 60 < camX || car.x - 60 > camX + W || car.y + 60 < camY || car.y - 60 > camY + H) continue;
+      if (car.x + 80 < camX || car.x - 80 > camX + W ||
+          car.y + 80 < camY || car.y - 80 > camY + H) continue;
       
       ctx.save();
       ctx.translate(car.x, car.y);
       ctx.rotate(car.rot);
-      ctx.fillStyle = 'rgba(0,0,0,0.5)';
-      ctx.fillRect(-car.w/2 + 3, -car.h/2 + 3, car.w, car.h);
+      
+      // Sombra
+      ctx.fillStyle = 'rgba(0,0,0,0.6)';
+      ctx.fillRect(-car.w/2 + 5, -car.h/2 + 5, car.w, car.h);
+      
+      // Corpo
       ctx.fillStyle = car.cor;
       ctx.fillRect(-car.w/2, -car.h/2, car.w, car.h);
+      
+      // Gradiente
+      var cgrad = ctx.createLinearGradient(0, -car.h/2, 0, car.h/2);
+      cgrad.addColorStop(0, 'rgba(255,255,255,0.25)');
+      cgrad.addColorStop(0.5, 'rgba(0,0,0,0.1)');
+      cgrad.addColorStop(1, 'rgba(0,0,0,0.5)');
+      ctx.fillStyle = cgrad;
+      ctx.fillRect(-car.w/2, -car.h/2, car.w, car.h);
+      
+      // Teto
+      ctx.fillStyle = 'rgba(0,0,0,0.5)';
+      ctx.fillRect(-car.w/4, -car.h/2 + 4, car.w/2, car.h - 8);
+      
+      // Vidros
+      ctx.fillStyle = 'rgba(10,20,35,0.9)';
+      ctx.fillRect(-car.w/4, -car.h/2 + 3, car.w/6, car.h - 6);
+      ctx.fillRect(car.w/8, -car.h/2 + 3, car.w/6, car.h - 6);
+      
+      // Brilho cromado
+      ctx.fillStyle = 'rgba(200,200,200,0.3)';
+      ctx.fillRect(-car.w/2, -car.h/2 + 1, car.w, 1);
+      
       ctx.strokeStyle = '#000';
       ctx.lineWidth = 1.5;
       ctx.strokeRect(-car.w/2, -car.h/2, car.w, car.h);
+      
       ctx.restore();
     }
     
@@ -680,16 +946,34 @@
       desenharZumbi(zumbis[z]);
     }
     
-    // Tiros
+    // Tiros (com rastro)
     for (var t = 0; t < tiros.length; t++) {
       var tiro = tiros[t];
-      ctx.fillStyle = tiro.cor;
+      
+      // Rastro
+      for (var r = 0; r < tiro.rastro.length; r++) {
+        ctx.globalAlpha = (r + 1) / tiro.rastro.length * 0.5;
+        ctx.fillStyle = tiro.cor;
+        ctx.beginPath();
+        ctx.arc(tiro.rastro[r].x, tiro.rastro[r].y, tiro.raio * (r + 1) / tiro.rastro.length, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.globalAlpha = 1;
+      
+      // Brilho
+      var tgrad = ctx.createRadialGradient(tiro.x, tiro.y, 0, tiro.x, tiro.y, tiro.raio * 3);
+      tgrad.addColorStop(0, tiro.cor);
+      tgrad.addColorStop(0.4, 'rgba(255,255,255,0.6)');
+      tgrad.addColorStop(1, 'rgba(255,255,255,0)');
+      ctx.fillStyle = tgrad;
       ctx.beginPath();
-      ctx.arc(tiro.x, tiro.y, tiro.raio, 0, Math.PI * 2);
+      ctx.arc(tiro.x, tiro.y, tiro.raio * 3, 0, Math.PI * 2);
       ctx.fill();
+      
+      // Núcleo
       ctx.fillStyle = '#fff';
       ctx.beginPath();
-      ctx.arc(tiro.x, tiro.y, tiro.raio * 0.5, 0, Math.PI * 2);
+      ctx.arc(tiro.x, tiro.y, tiro.raio * 0.7, 0, Math.PI * 2);
       ctx.fill();
     }
     
@@ -698,37 +982,74 @@
     
     ctx.restore();
     
-    // Mira
+    // Mira na tela
     if (rodando && !gameOver && !pausado) {
+      var mx = mouseScreen.x;
+      var my = mouseScreen.y;
+      
+      // Brilho
+      var miraGrad = ctx.createRadialGradient(mx, my, 0, mx, my, 20);
+      miraGrad.addColorStop(0, 'rgba(255,60,60,0.3)');
+      miraGrad.addColorStop(1, 'rgba(255,60,60,0)');
+      ctx.fillStyle = miraGrad;
+      ctx.beginPath();
+      ctx.arc(mx, my, 20, 0, Math.PI * 2);
+      ctx.fill();
+      
+      // Círculo
       ctx.strokeStyle = 'rgba(255,60,60,0.95)';
       ctx.lineWidth = 2;
       ctx.beginPath();
-      ctx.arc(mouseScreen.x, mouseScreen.y, 12, 0, Math.PI * 2);
+      ctx.arc(mx, my, 13, 0, Math.PI * 2);
       ctx.stroke();
       
+      // Cruz
       ctx.beginPath();
-      ctx.moveTo(mouseScreen.x - 18, mouseScreen.y);
-      ctx.lineTo(mouseScreen.x - 8, mouseScreen.y);
-      ctx.moveTo(mouseScreen.x + 8, mouseScreen.y);
-      ctx.lineTo(mouseScreen.x + 18, mouseScreen.y);
-      ctx.moveTo(mouseScreen.x, mouseScreen.y - 18);
-      ctx.lineTo(mouseScreen.x, mouseScreen.y - 8);
-      ctx.moveTo(mouseScreen.x, mouseScreen.y + 8);
-      ctx.lineTo(mouseScreen.x, mouseScreen.y + 18);
+      ctx.moveTo(mx - 20, my);
+      ctx.lineTo(mx - 8, my);
+      ctx.moveTo(mx + 8, my);
+      ctx.lineTo(mx + 20, my);
+      ctx.moveTo(mx, my - 20);
+      ctx.lineTo(mx, my - 8);
+      ctx.moveTo(mx, my + 8);
+      ctx.lineTo(mx, my + 20);
       ctx.stroke();
       
+      // Ponto central
       ctx.fillStyle = '#ff3c3c';
       ctx.beginPath();
-      ctx.arc(mouseScreen.x, mouseScreen.y, 2, 0, Math.PI * 2);
+      ctx.arc(mx, my, 2.5, 0, Math.PI * 2);
       ctx.fill();
     }
     
-    // Vinheta
-    var vig = ctx.createRadialGradient(W/2, H/2, H * 0.4, W/2, H/2, H * 0.85);
+    // Vinheta escura (borda)
+    var vig = ctx.createRadialGradient(W/2, H/2, H * 0.35, W/2, H/2, H * 0.85);
     vig.addColorStop(0, 'rgba(0,0,0,0)');
-    vig.addColorStop(1, 'rgba(0,0,0,0.5)');
+    vig.addColorStop(1, 'rgba(0,0,0,0.7)');
     ctx.fillStyle = vig;
     ctx.fillRect(0, 0, W, H);
+    
+    // Vinheta vermelha (vida baixa)
+    if (player && player.vida > 0 && player.vida / player.vidaMax < 0.35) {
+      var pulso = 0.15 + 0.15 * Math.sin(tempoJogo * 0.15);
+      var vigVerm = ctx.createRadialGradient(W/2, H/2, H * 0.3, W/2, H/2, H * 0.85);
+      vigVerm.addColorStop(0, 'rgba(0,0,0,0)');
+      vigVerm.addColorStop(1, 'rgba(180,0,0,' + pulso + ')');
+      ctx.fillStyle = vigVerm;
+      ctx.fillRect(0, 0, W, H);
+    }
+    
+    // Flash de dano
+    if (flashDano > 0) {
+      ctx.fillStyle = 'rgba(255,0,0,' + (flashDano / 15 * 0.3) + ')';
+      ctx.fillRect(0, 0, W, H);
+    }
+    
+    // Flash de coleta
+    if (flashColeta > 0) {
+      ctx.fillStyle = 'rgba(60,255,60,' + (flashColeta / 12 * 0.2) + ')';
+      ctx.fillRect(0, 0, W, H);
+    }
   }
   
   // ===== PLAYER =====
@@ -736,10 +1057,10 @@
     if (p.vida <= 0) {
       ctx.save();
       ctx.translate(p.x, p.y);
-      ctx.globalAlpha = 0.4;
-      ctx.fillStyle = '#500';
+      ctx.globalAlpha = 0.5;
+      ctx.fillStyle = '#400';
       ctx.beginPath();
-      ctx.ellipse(0, 0, p.raio * 1.3, p.raio * 0.6, 0, 0, Math.PI * 2);
+      ctx.ellipse(0, 0, p.raio * 1.5, p.raio * 0.7, 0, 0, Math.PI * 2);
       ctx.fill();
       ctx.restore();
       return;
@@ -748,15 +1069,25 @@
     ctx.save();
     ctx.translate(p.x, p.y);
     
-    // Sombra
-    ctx.fillStyle = 'rgba(0,0,0,0.5)';
+    // Sombra realista
+    ctx.fillStyle = 'rgba(0,0,0,0.6)';
     ctx.beginPath();
-    ctx.ellipse(2, p.raio * 0.7, p.raio * 1, p.raio * 0.5, 0, 0, Math.PI * 2);
+    ctx.ellipse(3, p.raio * 0.8, p.raio * 1.15, p.raio * 0.55, 0, 0, Math.PI * 2);
     ctx.fill();
     
     // Aura escudo
     if (p.escudo > 0) {
-      ctx.strokeStyle = 'rgba(80,160,255,0.6)';
+      var alfa = 0.3 + 0.15 * Math.sin(tempoJogo * 0.15);
+      var escGrad = ctx.createRadialGradient(0, 0, p.raio * 0.8, 0, 0, p.raio + 14);
+      escGrad.addColorStop(0, 'rgba(80,160,255,0)');
+      escGrad.addColorStop(0.6, 'rgba(80,160,255,' + (alfa * 0.5) + ')');
+      escGrad.addColorStop(1, 'rgba(80,160,255,0)');
+      ctx.fillStyle = escGrad;
+      ctx.beginPath();
+      ctx.arc(0, 0, p.raio + 14, 0, Math.PI * 2);
+      ctx.fill();
+      
+      ctx.strokeStyle = 'rgba(120,190,255,' + alfa + ')';
       ctx.lineWidth = 2;
       ctx.beginPath();
       ctx.arc(0, 0, p.raio + 8, 0, Math.PI * 2);
@@ -765,44 +1096,49 @@
     
     // Piscar se invulnerável
     if (p.invulneravel > 0 && Math.floor(p.invulneravel / 4) % 2 === 0) {
-      ctx.globalAlpha = 0.5;
+      ctx.globalAlpha = 0.55;
     }
     
-    // ===== PERSONAGEM DE CIMA (não rotaciona o corpo) =====
-    // O corpo sempre fica "de frente" para o topo da tela.
-    // Apenas a arma é rotacionada para apontar na direção do mouse.
-    
-    // Pernas (animação de caminhada)
     var anda = Math.sin(p.passoAnim * 8) * 2.5;
+    var respira = Math.sin(p.respira) * 0.5;
+    
+    // Pernas
     ctx.fillStyle = '#1a2a4a';
     ctx.fillRect(-7, 4 + anda, 5, p.raio - 2);
     ctx.fillRect(2, 4 - anda, 5, p.raio - 2);
+    
+    // Sapatos
     ctx.fillStyle = '#0a0a0a';
     ctx.fillRect(-7, 4 + p.raio - 2 + anda, 5, 4);
     ctx.fillRect(2, 4 + p.raio - 2 - anda, 5, 4);
     
     // Braço esquerdo
-    ctx.fillStyle = '#f0b088';
-    ctx.fillRect(-11, -p.raio * 0.4, 4, p.raio * 0.9);
+    ctx.fillStyle = '#e8a880';
+    ctx.fillRect(-11, -p.raio * 0.4 + respira, 4, p.raio * 0.9);
     
-    // Torso
+    // Torso com gradiente (camisa)
     var gCorpo = ctx.createLinearGradient(-8, -p.raio * 0.6, 8, p.raio * 0.5);
     gCorpo.addColorStop(0, '#4a8a54');
     gCorpo.addColorStop(1, '#2a5a34');
     ctx.fillStyle = gCorpo;
-    ctx.fillRect(-8, -p.raio * 0.6, 16, p.raio * 1.0);
+    ctx.fillRect(-8, -p.raio * 0.6 + respira, 16, p.raio * 1.0);
     ctx.strokeStyle = '#1a2a1a';
     ctx.lineWidth = 1.5;
-    ctx.strokeRect(-8, -p.raio * 0.6, 16, p.raio * 1.0);
+    ctx.strokeRect(-8, -p.raio * 0.6 + respira, 16, p.raio * 1.0);
     
-    // Colete
+    // Colete tático
     ctx.fillStyle = '#4a3a1a';
-    ctx.fillRect(-8, -p.raio * 0.3, 16, 4);
+    ctx.fillRect(-8, -p.raio * 0.3 + respira, 16, 4);
+    ctx.fillStyle = '#2a1a0a';
+    ctx.fillRect(-8, p.raio * 0.2 + respira, 16, 3);
     
-    // Cabeça
-    ctx.fillStyle = '#f4c49a';
+    // Cabeça com gradiente
+    var gCabeca = ctx.createRadialGradient(-2, -p.raio * 0.85 - 2, 1, 0, -p.raio * 0.85, p.raio * 0.65);
+    gCabeca.addColorStop(0, '#fcd0aa');
+    gCabeca.addColorStop(1, '#d8a070');
+    ctx.fillStyle = gCabeca;
     ctx.beginPath();
-    ctx.arc(0, -p.raio * 0.85, p.raio * 0.6, 0, Math.PI * 2);
+    ctx.arc(0, -p.raio * 0.85 + respira, p.raio * 0.62, 0, Math.PI * 2);
     ctx.fill();
     ctx.strokeStyle = '#8a5a3a';
     ctx.lineWidth = 1.5;
@@ -811,35 +1147,63 @@
     // Cabelo
     ctx.fillStyle = '#1a0f05';
     ctx.beginPath();
-    ctx.arc(0, -p.raio * 0.85, p.raio * 0.6, Math.PI, Math.PI * 2);
+    ctx.arc(0, -p.raio * 0.85 + respira, p.raio * 0.62, Math.PI, Math.PI * 2);
     ctx.fill();
     
-    // Olhos (olhando levemente para o mouse)
-    var olhoDX = Math.cos(p.angulo) * 1.5;
-    var olhoDY = Math.sin(p.angulo) * 1.5;
+    // Olhos
+    var olhoDX = Math.cos(p.angulo) * 1.8;
+    var olhoDY = Math.sin(p.angulo) * 1.8;
     ctx.fillStyle = '#fff';
     ctx.beginPath();
-    ctx.arc(-3 + olhoDX, -p.raio * 0.9 + olhoDY, 2.2, 0, Math.PI * 2);
-    ctx.arc(3 + olhoDX, -p.raio * 0.9 + olhoDY, 2.2, 0, Math.PI * 2);
+    ctx.arc(-3 + olhoDX, -p.raio * 0.9 + respira + olhoDY, 2.5, 0, Math.PI * 2);
+    ctx.arc(3 + olhoDX, -p.raio * 0.9 + respira + olhoDY, 2.5, 0, Math.PI * 2);
     ctx.fill();
     ctx.fillStyle = '#1a3a6a';
     ctx.beginPath();
-    ctx.arc(-3 + olhoDX * 1.3, -p.raio * 0.9 + olhoDY * 1.3, 1.1, 0, Math.PI * 2);
-    ctx.arc(3 + olhoDX * 1.3, -p.raio * 0.9 + olhoDY * 1.3, 1.1, 0, Math.PI * 2);
+    ctx.arc(-3 + olhoDX * 1.4, -p.raio * 0.9 + respira + olhoDY * 1.4, 1.3, 0, Math.PI * 2);
+    ctx.arc(3 + olhoDX * 1.4, -p.raio * 0.9 + respira + olhoDY * 1.4, 1.3, 0, Math.PI * 2);
     ctx.fill();
     
-    // ===== BRAÇO DIREITO + ARMA (rotacionam para o mouse) =====
+    // Sobrancelhas
+    ctx.strokeStyle = '#2a1a0a';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(-6, -p.raio * 1.15 + respira);
+    ctx.lineTo(-2, -p.raio * 1.1 + respira);
+    ctx.moveTo(2, -p.raio * 1.1 + respira);
+    ctx.lineTo(6, -p.raio * 1.15 + respira);
+    ctx.stroke();
+    
+    // Braço direito + arma (rotaciona)
     ctx.save();
     ctx.rotate(p.angulo);
     
-    // Braço direito esticado
-    ctx.fillStyle = '#f0b088';
-    ctx.fillRect(p.raio * 0.3, -2, p.raio * 0.7, 4);
+    // Braço direito
+    ctx.fillStyle = '#e8a880';
+    ctx.fillRect(p.raio * 0.3, -2, p.raio * 0.75, 4);
     
     // Arma
     var arma = ARMAS[Math.min(p.nivelArma, ARMAS.length - 1)];
-    ctx.fillStyle = '#333';
-    ctx.fillRect(p.raio * 0.9, -3, 16, 6);
+    
+    // Flash do cano
+    if (p.flash > 0) {
+      var flashGrad = ctx.createRadialGradient(p.raio * 0.9 + 18, 0, 0, p.raio * 0.9 + 18, 0, 15);
+      flashGrad.addColorStop(0, 'rgba(255,255,200,0.95)');
+      flashGrad.addColorStop(0.4, arma.cor);
+      flashGrad.addColorStop(1, 'rgba(255,150,30,0)');
+      ctx.fillStyle = flashGrad;
+      ctx.beginPath();
+      ctx.arc(p.raio * 0.9 + 18, 0, 15, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    
+    // Cano
+    ctx.fillStyle = '#1a1a1a';
+    ctx.fillRect(p.raio * 0.9, -3.5, 16, 7);
+    ctx.fillStyle = '#444';
+    ctx.fillRect(p.raio * 0.9, -2, 16, 2);
+    
+    // Cor da arma
     ctx.fillStyle = arma.cor;
     ctx.fillRect(p.raio * 0.9 + 14, -3, 3, 6);
     
@@ -854,67 +1218,140 @@
     ctx.translate(z.x, z.y);
     
     // Sombra
-    ctx.fillStyle = 'rgba(0,0,0,0.5)';
+    ctx.fillStyle = 'rgba(0,0,0,0.6)';
     ctx.beginPath();
-    ctx.ellipse(2, z.raio * 0.7, z.raio * 1, z.raio * 0.5, 0, 0, Math.PI * 2);
+    ctx.ellipse(2, z.raio * 0.8, z.raio * 1.1, z.raio * 0.55, 0, 0, Math.PI * 2);
     ctx.fill();
     
-    // Corpo em pé (visão de cima)
-    // Braços esticados para frente (na direção do ângulo)
+    // Rotação para o ângulo
     ctx.save();
-    ctx.rotate(z.angulo);
+    ctx.rotate(z.angulo + Math.PI / 2);
     
-    // Braços esticados
+    var anda = Math.sin(z.passo * 8) * 1.8 * (z.mancando ? 1.5 : 1);
+    var cabecaOscila = Math.sin(z.passo * 0.7) * 1;
+    
+    // Braços esticados (na direção do jogador = -Y local após rotação)
     ctx.fillStyle = z.cor;
-    ctx.fillRect(4, -z.raio * 0.55, z.raio * 1.2, z.raio * 0.35);
-    ctx.fillRect(4, z.raio * 0.2, z.raio * 1.2, z.raio * 0.35);
+    ctx.fillRect(-z.raio * 0.6, -z.raio * 0.3, z.raio * 0.35, z.raio * 1.4);
+    ctx.fillRect(z.raio * 0.25, -z.raio * 0.3, z.raio * 0.35, z.raio * 1.4);
     
-    ctx.restore();
+    // Mãos podres
+    ctx.fillStyle = '#5a6a4a';
+    ctx.beginPath();
+    ctx.arc(-z.raio * 0.42, -z.raio * 0.4, 3, 0, Math.PI * 2);
+    ctx.arc(z.raio * 0.42, -z.raio * 0.4, 3, 0, Math.PI * 2);
+    ctx.fill();
     
-    // Pernas (animação)
-    var anda = Math.sin(z.passo * 8) * 1.5;
+    // Pernas (atrás)
     ctx.fillStyle = '#2a1a0a';
-    ctx.fillRect(-6, 3 + anda, 4, z.raio - 1);
-    ctx.fillRect(2, 3 - anda, 4, z.raio - 1);
+    ctx.fillRect(-6, z.raio * 0.2 + anda, 4, z.raio * 0.7);
+    ctx.fillRect(2, z.raio * 0.2 - anda, 4, z.raio * 0.7);
     
-    // Corpo
-    ctx.fillStyle = z.cor;
+    // Corpo (gradiente)
+    var gCorpo = ctx.createRadialGradient(-z.raio * 0.3, -z.raio * 0.3, 1, 0, 0, z.raio * 1.2);
+    gCorpo.addColorStop(0, z.cor);
+    gCorpo.addColorStop(1, '#0a0a0a');
+    ctx.fillStyle = gCorpo;
     ctx.beginPath();
     ctx.arc(0, 0, z.raio, 0, Math.PI * 2);
     ctx.fill();
-    ctx.strokeStyle = '#0a0a0a';
+    ctx.strokeStyle = '#000';
     ctx.lineWidth = 1.5;
     ctx.stroke();
     
-    // Cabeça
-    ctx.fillStyle = z.cor;
+    // Ferida (se tiver)
+    if (z.ferida) {
+      ctx.fillStyle = 'rgba(120,10,10,0.8)';
+      ctx.beginPath();
+      ctx.arc(-z.raio * 0.3, z.raio * 0.2, 3, 0, Math.PI * 2);
+      ctx.fill();
+      // Sangue escorrendo
+      ctx.fillStyle = 'rgba(180,20,20,0.5)';
+      ctx.fillRect(-z.raio * 0.3 - 0.5, z.raio * 0.2, 1, 5);
+    }
+    
+    // Rasgo na roupa
+    ctx.fillStyle = '#0a0806';
     ctx.beginPath();
-    ctx.arc(0, -z.raio * 0.65, z.raio * 0.55, 0, Math.PI * 2);
+    ctx.arc(z.raio * 0.4, -z.raio * 0.1, 2.5, 0, Math.PI * 2);
+    ctx.fill();
+    
+    // Cabeça (frente do zumbi = -Y local)
+    var headY = -z.raio * 0.85 + cabecaOscila;
+    var gCabeca = ctx.createRadialGradient(-2, headY - 2, 1, 0, headY, z.raio * 0.65);
+    gCabeca.addColorStop(0, z.cor);
+    gCabeca.addColorStop(1, '#0a0a0a');
+    ctx.fillStyle = gCabeca;
+    ctx.beginPath();
+    ctx.arc(0, headY, z.raio * 0.62, 0, Math.PI * 2);
     ctx.fill();
     ctx.strokeStyle = '#000';
+    ctx.lineWidth = 1.5;
     ctx.stroke();
     
-    // Olhos vermelhos (na direção do ângulo)
-    var olhoDX = Math.cos(z.angulo) * 2;
-    var olhoDY = Math.sin(z.angulo) * 2;
-    ctx.fillStyle = '#f00';
+    // Cabelo
+    if (z.cabelo) {
+      ctx.fillStyle = '#1a0a05';
+      ctx.beginPath();
+      ctx.arc(0, headY, z.raio * 0.62, Math.PI, Math.PI * 2);
+      ctx.fill();
+    }
+    
+    // Olhos vermelhos brilhantes
+    var olhoGrad = ctx.createRadialGradient(-3, headY - 2, 0, -3, headY - 2, 5);
+    olhoGrad.addColorStop(0, '#fff');
+    olhoGrad.addColorStop(0.3, '#f00');
+    olhoGrad.addColorStop(1, 'rgba(180,0,0,0)');
+    ctx.fillStyle = olhoGrad;
     ctx.beginPath();
-    ctx.arc(-3 + olhoDX, -z.raio * 0.7 + olhoDY, 2, 0, Math.PI * 2);
-    ctx.arc(3 + olhoDX, -z.raio * 0.7 + olhoDY, 2, 0, Math.PI * 2);
+    ctx.arc(-3, headY - 2, 5, 0, Math.PI * 2);
+    ctx.arc(4, headY - 1, 4, 0, Math.PI * 2);
     ctx.fill();
     
-    // Boca
-    ctx.fillStyle = '#1a0505';
-    ctx.fillRect(-3 + olhoDX * 0.5, -z.raio * 0.45 + olhoDY * 0.5, 6, 2.5);
+    ctx.fillStyle = '#f00';
+    ctx.beginPath();
+    ctx.arc(-3, headY - 2, 2, 0, Math.PI * 2);
+    ctx.arc(4, headY - 1, 1.8, 0, Math.PI * 2);
+    ctx.fill();
     
-    // Barra de vida
+    // Boca aberta com dentes
+    ctx.fillStyle = '#1a0505';
+    ctx.beginPath();
+    ctx.ellipse(0, headY + z.raio * 0.4, 4.5, 2.8, 0, 0, Math.PI * 2);
+    ctx.fill();
+    
+    // Dentes
+    ctx.fillStyle = '#c8c0a0';
+    ctx.fillRect(-3, headY + z.raio * 0.3, 1.5, 2);
+    ctx.fillRect(-0.5, headY + z.raio * 0.32, 1.5, 2);
+    ctx.fillRect(2, headY + z.raio * 0.35, 1.2, 2);
+    
+    // Sangue escorrendo
+    ctx.fillStyle = 'rgba(150,10,10,0.85)';
+    ctx.beginPath();
+    ctx.moveTo(0, headY + z.raio * 0.42);
+    ctx.lineTo(-1, headY + z.raio * 0.55);
+    ctx.lineTo(1, headY + z.raio * 0.5);
+    ctx.lineTo(1.5, headY + z.raio * 0.6);
+    ctx.closePath();
+    ctx.fill();
+    
+    ctx.restore();
+    
+    // Barra de vida (fora da rotação)
     if (z.vida < z.vidaMax) {
-      var w = z.raio * 2;
-      ctx.fillStyle = 'rgba(0,0,0,0.7)';
-      ctx.fillRect(-w/2, -z.raio - 12, w, 3);
+      var w = z.raio * 2.2;
+      var bx = z.x - w / 2;
+      var by = z.y - z.raio - 14;
+      ctx.fillStyle = 'rgba(0,0,0,0.8)';
+      ctx.fillRect(bx, by, w, 4);
       var pct = z.vida / z.vidaMax;
-      ctx.fillStyle = pct > 0.5 ? '#3f3' : pct > 0.25 ? '#fa0' : '#f22';
-      ctx.fillRect(-w/2, -z.raio - 12, w * pct, 3);
+      var corBarra = pct > 0.5 ? '#3f3' : pct > 0.25 ? '#fa0' : '#f22';
+      ctx.fillStyle = corBarra;
+      ctx.fillRect(bx, by, w * pct, 4);
+      ctx.strokeStyle = '#000';
+      ctx.lineWidth = 1;
+      ctx.strokeRect(bx, by, w, 4);
     }
     
     ctx.restore();
@@ -923,11 +1360,24 @@
   // ===== BÔNUS =====
   function desenharBonus(b) {
     var bob = Math.sin(b.bob) * 3;
+    var pulso = 1 + Math.sin(b.bob * 2) * 0.08;
     var alfa = b.vida < 100 ? 0.4 : 1;
     
     ctx.save();
     ctx.globalAlpha = alfa;
     ctx.translate(b.x, b.y + bob);
+    
+    // Halo
+    var corHalo = b.tipo === 'vida' ? 'rgba(60,255,60,' : 'rgba(60,140,255,';
+    var halo = ctx.createRadialGradient(0, 0, 2, 0, 0, 30);
+    halo.addColorStop(0, corHalo + '0.5)');
+    halo.addColorStop(1, corHalo + '0)');
+    ctx.fillStyle = halo;
+    ctx.beginPath();
+    ctx.arc(0, 0, 30, 0, Math.PI * 2);
+    ctx.fill();
+    
+    ctx.scale(pulso, pulso);
     
     if (b.tipo === 'vida') {
       ctx.fillStyle = '#2a6a2a';
@@ -938,8 +1388,8 @@
       ctx.lineWidth = 2;
       ctx.stroke();
       ctx.fillStyle = '#fff';
-      ctx.fillRect(-2, -7, 4, 14);
-      ctx.fillRect(-7, -2, 14, 4);
+      ctx.fillRect(-2.5, -8, 5, 16);
+      ctx.fillRect(-8, -2.5, 16, 5);
     } else {
       ctx.fillStyle = '#2a3a6a';
       ctx.beginPath();
@@ -950,14 +1400,17 @@
       ctx.stroke();
       ctx.fillStyle = '#9cf';
       ctx.beginPath();
-      ctx.moveTo(0, -7);
-      ctx.lineTo(7, -4);
-      ctx.lineTo(7, 2);
-      ctx.lineTo(0, 7);
-      ctx.lineTo(-7, 2);
-      ctx.lineTo(-7, -4);
+      ctx.moveTo(0, -8);
+      ctx.lineTo(8, -5);
+      ctx.lineTo(8, 2);
+      ctx.lineTo(0, 8);
+      ctx.lineTo(-8, 2);
+      ctx.lineTo(-8, -5);
       ctx.closePath();
       ctx.fill();
+      ctx.strokeStyle = '#fff';
+      ctx.lineWidth = 1;
+      ctx.stroke();
     }
     
     ctx.restore();
@@ -1047,7 +1500,7 @@
     e.preventDefault();
   });
   
-  // Tiro automático enquanto segura o mouse
+  // Tiro automático
   setInterval(function() {
     if (mouseDown && rodando && !gameOver && !pausado) {
       atirar();
@@ -1077,11 +1530,16 @@
     tiros = [];
     particulas = [];
     bonus = [];
+    manchas = [];
     mortos = 0;
     onda = 1;
     gameOver = false;
     pausado = false;
     mouseDown = false;
+    tempoJogo = 0;
+    tremorTela = 0;
+    flashDano = 0;
+    flashColeta = 0;
     
     camX = MAPA_W / 2 - W / 2;
     camY = MAPA_H / 2 - H / 2;
@@ -1106,9 +1564,9 @@
     overlay.classList.remove('oculto');
     overlay.innerHTML = 
       '<h1>FIM DE JOGO</h1>' +
-      '<p>Mortos: ' + mortos + '</p>' +
-      '<p>Ondas: ' + (onda - 1) + '</p>' +
-      '<p>Arma: ' + ARMAS[Math.min(player.nivelArma, ARMAS.length - 1)].nome + '</p>' +
+      '<p>💀 Mortos: ' + mortos + '</p>' +
+      '<p>🌊 Ondas: ' + (onda - 1) + '</p>' +
+      '<p>🔫 Arma final: ' + ARMAS[Math.min(player.nivelArma, ARMAS.length - 1)].nome + '</p>' +
       '<div class="modos">' +
         '<button id="btnReiniciarFinal">JOGAR NOVAMENTE</button>' +
       '</div>';
